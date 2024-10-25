@@ -78,11 +78,19 @@ function fetchImages() {
       if (imgSrc && !selectedImages.includes(imgSrc)) {
         selectedImages.push(imgSrc);
       }
+ 
+    
     });
     updatePanel();
   }
 }
 
+
+// // Clear selected images
+function clearSelectedImages() {
+  selectedImages = [];  // Empty the selected images array
+  updatePanel();  // Update the panel to reflect the change
+}
 
 
 // Start observing and scrolling
@@ -92,8 +100,18 @@ function startFetchingImages() {
 }
 
 // Handle the Fetch Images button click
-function fetchImagesButtonClick() {
-  startFetchingImages();  // Start fetching and scrolling
+async function fetchImagesButtonClick() {
+  const loader = document.getElementById('loader');
+  
+  // Show the loader
+  loader.style.display = 'block';
+
+  await startFetchingImages();  // Start fetching and scrolling
+
+   // Hide the loader once the fetching process is done
+   setTimeout(() => {
+    loader.style.display = 'none';
+  }, 500); 
 }
 
 
@@ -116,6 +134,19 @@ function injectPanel() {
   header.textContent = 'Selected Images';
   panel.appendChild(header);
 
+  // Loader element
+  const loader = document.createElement('div');
+  loader.id = 'loader';
+  loader.style.display = 'none';  // Initially hidden
+  loader.style.border = '5px solid #f3f3f3';  // Outer circle
+  loader.style.borderRadius = '50%';
+  loader.style.borderTop = '5px solid #3498db';  // Blue colored rotating part
+  loader.style.width = '30px';
+  loader.style.height = '30px';
+  loader.style.animation = 'spin 1s linear infinite';  // Animation for spinning
+  loader.style.margin = '10px auto';  // Center the loader
+  panel.appendChild(loader);
+
   const selectedImageList = document.createElement('div');
   selectedImageList.id = 'selected-images-list';
   selectedImageList.style.display = 'flex';  // Display images in a row
@@ -124,11 +155,11 @@ function injectPanel() {
   selectedImageList.style.whiteSpace = 'nowrap';  // Prevent line breaks
   panel.appendChild(selectedImageList);
 
-    // Add an element to show the image count
-    const imageCount = document.createElement('div');
-    imageCount.id = 'image-count';
-    imageCount.style.marginBottom = '10px';
-    panel.appendChild(imageCount);
+  // Add an element to show the image count
+  const imageCount = document.createElement('div');
+  imageCount.id = 'image-count';
+  imageCount.style.marginBottom = '10px';
+  panel.appendChild(imageCount);
 
   // Download Button
   const downloadButton = document.createElement('button');
@@ -142,8 +173,25 @@ function injectPanel() {
   fetchImagesButton.onclick = fetchImagesButtonClick;
   panel.appendChild(fetchImagesButton);
 
+  // Clear Images Button
+  const clearButton = document.createElement('button');
+  clearButton.textContent = 'Clear Selected Images';
+  clearButton.onclick = clearSelectedImages;
+  panel.appendChild(clearButton);
+
+
   document.body.appendChild(panel);
 }
+
+// Add a keyframe animation for the loader's spin effect
+const style = document.createElement('style');
+style.type = 'text/css';
+style.innerHTML = `
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}`;
+document.getElementsByTagName('head')[0].appendChild(style);
 
  
 
@@ -192,25 +240,7 @@ document.addEventListener('click', function(event) {
 
     // Update selected images panel
     updatePanel();
-
-    // Store selected images
-    // chrome.storage.local.set({ selectedImages });
   }
 });
 
-// Load and display existing selected images when the page loads
-// chrome.storage.local.get('selectedImages', function(data) {
-//   if (data.selectedImages) {
-//     selectedImages = data.selectedImages;
-//     selectedImages.forEach((src) => {
-//       const img = document.querySelector(`img[src="${src}"]`);
-//       if (img) img.style.border = '5px solid red';
-//     });
-
-//     // Inject the panel and update with selected images
-//     injectPanel();
-//     updatePanel();
-//   } else {
-//   }
-// });
 injectPanel();
