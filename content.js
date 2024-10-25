@@ -8,7 +8,7 @@ function autoScroll() {
   document.body.style.overflow = 'hidden';
   scrollInterval = setInterval(() => {
     window.scrollBy({ top: 1000, behavior: 'smooth' }); // Smooth scroll down by 1000 pixels
-console.log("(window.innerHeight + window.scrollY) >= document.documentElement.scrollHeight", (window.innerHeight + window.scrollY) >= document.documentElement.scrollHeight)
+
     // Check if the page has scrolled to the bottom using scrollHeight
     if ((window.innerHeight + window.scrollY) >= document.documentElement.scrollHeight) {
       // Stop auto-scroll and observer when reaching the bottom
@@ -21,28 +21,26 @@ console.log("(window.innerHeight + window.scrollY) >= document.documentElement.s
 // Set up a MutationObserver to detect new images
 function observeImageList() {
   const listDiv = document.querySelector('div[role="list"]');
+  console.log("observeImageList", listDiv)
   if (!listDiv) {
     console.log('No div with role="list" found.');
     return;
   }
 
   observer = new MutationObserver((mutations) => {
-    let newImagesLoaded = false;
-
     mutations.forEach((mutation) => {
-      if (mutation.addedNodes.length) {
+      // console.log("Mutation detected: ", mutation);
+      if (mutation.addedNodes.length || mutation.type === 'attributes') {
         fetchImages();  // Fetch new images when new nodes are added
-        newImagesLoaded = true;
       }
     });
-console.log("(window.innerHeight + window.scrollY) >= document.body.offsetHeight", (window.innerHeight + window.scrollY) >= document.body.offsetHeight)
-    // Check if scrolled to the bottom
-    // if (!newImagesLoaded && (window.innerHeight + window.scrollY) >= document.body.offsetHeight) {
-    //   stopAutoScrollAndObserver(); // Stop auto-scroll and observer if no more images are loaded
-    // }
   });
 
-  observer.observe(listDiv, { childList: true, subtree: true });
+  observer.observe(listDiv, {
+    childList: true, // Watch for child node additions/removals
+    attributes: true, // Watch for attribute changes
+    subtree: true // Watch all descendants
+  });
 }
 
 // Stop auto-scroll and observer
@@ -61,9 +59,12 @@ function stopAutoScrollAndObserver() {
 
 // Fetch images from a div with role="list" and update selectedImages
 function fetchImages() {
+  console.log("fetchImages")
   const listDiv = document.querySelector('div[role="list"]');
+  console.log("listDiv", listDiv)
   if (listDiv) {
     const images = listDiv.querySelectorAll('img');
+    console.log("images", images)
     images.forEach(img => {
       let imgSrc = img.getAttribute('src');
       
@@ -71,7 +72,8 @@ function fetchImages() {
       const srcset = img.getAttribute('srcset');
       if (srcset) {
         const srcsetUrls = srcset.split(',').map(url => url.trim());
-        const highestQualityUrl = srcsetUrls[srcsetUrls.length - 1].split(' ')[0]; // Select the last (4x) image
+        // Select the last (4x) image
+        const highestQualityUrl = srcsetUrls[srcsetUrls.length - 1].split(' ')[0]; 
         imgSrc = highestQualityUrl;
       }
 
@@ -86,7 +88,7 @@ function fetchImages() {
 }
 
 
-// // Clear selected images
+// Clear selected images
 function clearSelectedImages() {
   selectedImages = [];  // Empty the selected images array
   updatePanel();  // Update the panel to reflect the change
@@ -126,12 +128,14 @@ function injectPanel() {
   panel.style.right = '0';
   panel.style.width = '250px';
   panel.style.background = 'white';
-  panel.style.border = '1px solid #ccc';
-  panel.style.padding = '10px';
+  panel.style.border = 'none';
+  panel.style.borderRadius = '20px';
+  panel.style.padding = '15px';
   panel.style.zIndex = '10000';
 
   const header = document.createElement('h3');
   header.textContent = 'Selected Images';
+  header.style.paddingBottom = '10px';
   panel.appendChild(header);
 
   // Loader element
@@ -150,8 +154,8 @@ function injectPanel() {
   const selectedImageList = document.createElement('div');
   selectedImageList.id = 'selected-images-list';
   selectedImageList.style.display = 'flex';  // Display images in a row
+  selectedImageList.style.height = '150px';  // Enable horizontal scrolling
   selectedImageList.style.overflowX = 'auto';  // Enable horizontal scrolling
-  selectedImageList.style.maxWidth = '230px';  // Set max width to allow scrolling
   selectedImageList.style.whiteSpace = 'nowrap';  // Prevent line breaks
   panel.appendChild(selectedImageList);
 
@@ -161,23 +165,44 @@ function injectPanel() {
   imageCount.style.marginBottom = '10px';
   panel.appendChild(imageCount);
 
+  // Create a container for the buttons
+  const buttonContainer = document.createElement('div');
+  buttonContainer.style.display = 'flex';
+  buttonContainer.style.flexDirection = 'column';
+  buttonContainer.style.gap = '10px';  // Add spacing between the buttons
+  buttonContainer.style.marginTop = '10px';
+  panel.appendChild(buttonContainer);
+  
+
   // Download Button
   const downloadButton = document.createElement('button');
   downloadButton.textContent = 'Download Selected Images';
+  downloadButton.style.border = '0'; 
+  downloadButton.style.borderRadius = '20px'; 
+  downloadButton.style.padding = '15px'; 
+  downloadButton.style.width = '100%'; 
   downloadButton.onclick = downloadSelectedImages;
-  panel.appendChild(downloadButton);
+  buttonContainer.appendChild(downloadButton);
 
   // Fetch Images Button
   const fetchImagesButton = document.createElement('button');
   fetchImagesButton.textContent = 'Fetch Images';
+  fetchImagesButton.style.border = '0'; 
+  fetchImagesButton.style.borderRadius = '20px'; 
+  fetchImagesButton.style.padding = '15px'; 
+  fetchImagesButton.style.width = '100%'; 
   fetchImagesButton.onclick = fetchImagesButtonClick;
-  panel.appendChild(fetchImagesButton);
+  buttonContainer.appendChild(fetchImagesButton);
 
   // Clear Images Button
   const clearButton = document.createElement('button');
   clearButton.textContent = 'Clear Selected Images';
+  clearButton.style.border = '0'; 
+  clearButton.style.borderRadius = '20px'; 
+  clearButton.style.padding = '15px'; 
+  clearButton.style.width = '100%'; 
   clearButton.onclick = clearSelectedImages;
-  panel.appendChild(clearButton);
+  buttonContainer.appendChild(clearButton);
 
 
   document.body.appendChild(panel);
@@ -205,7 +230,7 @@ function updatePanel() {
     const img = document.createElement('img');
     img.src = src;
     img.style.width = '100px';
-    img.style.height = '200px';
+    img.style.height = '150px';
     img.style.marginRight = '10px';
     imageList.appendChild(img);
   });
