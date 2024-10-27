@@ -1,6 +1,30 @@
+(function() {
+  if (window.imageSelectionScriptActive) {
+    // Cleanup if the script is active
+    const existingPanel = document.getElementById('image-selection-panel');
+    if (existingPanel) existingPanel.remove();
+  
+    // Clear intervals and observers
+    if (window.scrollInterval) clearInterval(window.scrollInterval);
+    if (window.imageObserver) window.imageObserver.disconnect();
+  
+    // Reset any style changes
+    document.body.style.backgroundColor = '';
+    document.body.style.overflow = '';
+  
+    // Reset global variables
+    delete window.selectedImages;
+    delete window.scrollInterval;
+    delete window.imageObserver;
+    delete window.imageSelectionScriptActive;
+  
+    console.log("Content script removed.");
+  } else {
+window.imageSelectionScriptActive = true;
 let selectedImages = [];
 let scrollInterval;
 let observer;
+
 console.log('content.js loaded');
 // Inject a floating panel into the webpage for selected images and download button
 // Automatically scroll the page smoothly to load more content
@@ -267,5 +291,6 @@ document.addEventListener('click', function(event) {
     updatePanel();
   }
 });
-
 injectPanel();
+}
+})();
