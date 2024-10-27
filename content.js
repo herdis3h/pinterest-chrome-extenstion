@@ -9,7 +9,7 @@
     if (window.imageObserver) window.imageObserver.disconnect();
   
     // Reset any style changes
-    document.body.style.backgroundColor = '';
+    // document.body.style.backgroundColor = '';
     document.body.style.overflow = '';
   
     // Reset global variables
@@ -67,7 +67,6 @@ function observeImageList() {
   });
 }
 
-// Stop auto-scroll and observer
 function stopAutoScrollAndObserver() {
   if (scrollInterval) {
     clearInterval(scrollInterval);
@@ -77,6 +76,23 @@ function stopAutoScrollAndObserver() {
     observer.disconnect();
     observer = null;
     console.log('Stopped auto-scroll and observer.');
+
+    // Re-enable buttons after scrolling and observing are complete
+    const downloadButton = document.querySelector('button[data-action="download"]');
+    const clearButton = document.querySelector('button[data-action="clear"]');
+    const fetchImagesButton = document.querySelector('button[data-action="fetch"]');
+    
+    downloadButton.disabled = false;
+    clearButton.disabled = false;
+    fetchImagesButton.disabled = false;
+
+    downloadButton.style.opacity = '1';
+    clearButton.style.opacity = '1';
+    fetchImagesButton.style.opacity = '1';
+    
+    downloadButton.style.cursor = 'pointer';
+    clearButton.style.cursor = 'pointer';
+    fetchImagesButton.style.cursor = 'pointer';
   }
   document.body.style.overflow = '';
 }
@@ -141,40 +157,46 @@ async function startFetchingImages() {
 }
 
 
-// Handle the Fetch Images button click
 async function fetchImagesButtonClick() {
   const loader = document.getElementById('loader');
+  const downloadButton = document.querySelector('button[data-action="download"]');
+  const clearButton = document.querySelector('button[data-action="clear"]');
+  const fetchImagesButton = document.querySelector('button[data-action="fetch"]'); // Select button by data-action attribute
 
-  // Check if loader exists
-  if (loader) {
-    // Show the loader
-    loader.style.display = 'block';
-  } else {
-    console.warn("Loader element not found");
-  }
+  // Disable all buttons during the image collection process
+  downloadButton.disabled = true;
+  clearButton.disabled = true;
+  fetchImagesButton.disabled = true;
 
-  await startFetchingImages();  // Start fetching and scrolling
+  // Change styles for disabled state
+  downloadButton.style.opacity = '0.6';
+  clearButton.style.opacity = '0.6';
+  fetchImagesButton.style.opacity = '0.6';
+  downloadButton.style.cursor = 'not-allowed';
+  clearButton.style.cursor = 'not-allowed';
+  fetchImagesButton.style.cursor = 'not-allowed';
 
-  // Hide the loader once the fetching process is done
-  setTimeout(() => {
-    if (loader) {
-      loader.style.display = 'none';
-    }
-  }, 500);
+  // Show loader if available
+  if (loader) loader.style.display = 'block';
+
+  // Start fetching and scrolling
+  await startFetchingImages();
+
+  // Hide loader once the fetching process is done
+  if (loader) loader.style.display = 'none';
 }
-
-
 
 
 function injectPanel() {
 
-  document.body.style.backgroundColor = 'green';
+  // document.body.style.backgroundColor = 'green';
   const panel = document.createElement('div');
   panel.id = 'image-selection-panel';
   panel.style.position = 'fixed';
   panel.style.top = '50px';
   panel.style.right = '0';
   panel.style.width = '250px';
+  panel.style.boxShadow = 'rgba(17, 17, 26, 0.05) 0px 1px 0px, rgba(17, 17, 26, 0.1) 0px 0px 8px';
   panel.style.background = 'white';
   panel.style.border = 'none';
   panel.style.borderRadius = '20px';
@@ -246,7 +268,8 @@ function injectPanel() {
   const fetchImagesButton = document.createElement('button');
   fetchImagesButton.textContent = 'Select all images in board';
   fetchImagesButton.style.border = '0'; 
-  fetchImagesButton.style.borderRadius = '20px'; 
+  fetchImagesButton.setAttribute('data-action', 'fetch');
+  fetchImagesButton.style.borderRadius = '8px'; 
   fetchImagesButton.style.padding = '10px 15px'; 
   fetchImagesButton.style.width = '100%'; 
   fetchImagesButton.onclick = fetchImagesButtonClick;
@@ -262,8 +285,9 @@ function injectPanel() {
   // Clear Images Button
   const clearButton = document.createElement('button');
   clearButton.textContent = 'Reset';
+  clearButton.setAttribute('data-action', 'clear'); 
   clearButton.style.border = '0'; 
-  clearButton.style.borderRadius = '20px'; 
+  clearButton.style.borderRadius = '8px'; 
   clearButton.style.padding = '10px 15px'; 
   clearButton.style.width = 'fit-content'; 
   clearButton.onclick = clearSelectedImages;
@@ -271,8 +295,9 @@ function injectPanel() {
 
   // Download Button with Icon
   const downloadButton = document.createElement('button');
+  downloadButton.setAttribute('data-action', 'download'); 
   downloadButton.style.border = '0'; 
-  downloadButton.style.borderRadius = '20px'; 
+  downloadButton.style.borderRadius = '8px'; 
   downloadButton.style.padding = '10px 15px'; 
   downloadButton.style.width = 'fit-content'; 
   downloadButton.onclick = downloadSelectedImages;
@@ -323,7 +348,8 @@ function updatePanel() {
 
 // Handle downloading selected images
 function downloadSelectedImages() {
-  console.log("selectedImages", selectedImages)
+  if(selectedImages.length === 0) return
+  // console.log("selectedImages", selectedImages)
   chrome.runtime.sendMessage({ action: 'downloadImages', images: selectedImages }, (response) => {
     console.log('Download started', response);
   });
