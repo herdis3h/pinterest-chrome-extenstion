@@ -1,4 +1,9 @@
+import JSZip from 'jszip';
+import { saveAs } from 'file-saver';
+
 (function() {
+ 
+ 
   if (window.imageSelectionScriptActive) {
     // Cleanup if the script is active
     const existingPanel = document.getElementById('image-selection-panel');
@@ -20,116 +25,132 @@
   
     console.log("Content script removed.");
   } else {
-window.imageSelectionScriptActive = true;
-let selectedImages = [];
-let scrollInterval;
-let observer;
-
-console.log('content.js loaded');
-// Inject a floating panel into the webpage for selected images and download button
-// Automatically scroll the page smoothly to load more content
-function autoScroll() {
-  document.body.style.overflow = 'hidden';
-  scrollInterval = setInterval(() => {
-    window.scrollBy({ top: 1000, behavior: 'smooth' }); // Smooth scroll down by 1000 pixels
-
-    // Check if the page has scrolled to the bottom using scrollHeight
-    if ((window.innerHeight + window.scrollY) >= document.documentElement.scrollHeight) {
-      // Stop auto-scroll and observer when reaching the bottom
-      stopAutoScrollAndObserver();
-    }
-  }, 1500); // Scroll every 1.5 seconds to allow new content to load
-}
-
-
-// Set up a MutationObserver to detect new images
-function observeImageList() {
-  const listDiv = document.querySelector('div[role="list"]');
-  if (!listDiv) {
-      console.warn('No div with role="list" found.');
-      return;
-  }
-
-  console.log("Setting up observers for dynamic list items...");
-
-  // IntersectionObserver for visibility tracking
-  const visibilityObserver = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-          if (entry.isIntersecting) {
-              console.log("List item became visible:", entry.target);
-              fetchImagesFromListItem(entry.target); // Fetch images from the visible list item
-          }
-      });
-  }, {
-      root: listDiv,   // Observe only within the listDiv
-      rootMargin: '0px', // Adjust if needed to trigger earlier
-      threshold: 0.1,  // Trigger when at least 10% of the list item is visible
-  });
-
-  // MutationObserver for dynamically added list items
-  const mutationObserver = new MutationObserver((mutations) => {
-      mutations.forEach(mutation => {
-          mutation.addedNodes.forEach(node => {
-              if (node.nodeType === Node.ELEMENT_NODE && node.getAttribute('role') === 'listitem') {
-                  console.log("New list item detected:", node);
-                  visibilityObserver.observe(node); // Start observing the new list item
-              }
-          });
-      });
-  });
-
-  // Start observing the listDiv for new list items
-  mutationObserver.observe(listDiv, {
-      childList: true,
-      subtree: true,
-  });
-
-  console.log("MutationObserver and IntersectionObserver are active.");
-}
-
-// Stop auto-scroll and observer
-function stopAutoScrollAndObserver() {
-  if (scrollInterval) {
-    clearInterval(scrollInterval);
-    scrollInterval = null;
-  }
-  if (observer) {
-    observer.disconnect();
-    observer = null;
-    console.log('Stopped auto-scroll and observer.');
-  }
-  document.body.style.overflow = '';
-}
-
-// Fetch images from a div with role="list" and update selectedImages
-function fetchImages() {
-  console.log("fetchImages")
-  const listDiv = document.querySelector('div[role="list"]');
-  console.log("listDiv", listDiv)
-  if (listDiv) {
-    const images = listDiv.querySelectorAll('img');
-    console.log("images", images)
-    images.forEach(img => {
-      let imgSrc = img.getAttribute('src');
-      
-      // If srcset exists, pick the highest quality image (4x)
-      const srcset = img.getAttribute('srcset');
-      if (srcset) {
-        const srcsetUrls = srcset.split(',').map(url => url.trim());
-        // Select the last (4x) image
-        const highestQualityUrl = srcsetUrls[srcsetUrls.length - 1].split(' ')[0]; 
-        imgSrc = highestQualityUrl;
-      }
-
-      if (imgSrc && !selectedImages.includes(imgSrc)) {
-        selectedImages.push(imgSrc);
-      }
  
+
+    window.imageSelectionScriptActive = true;
+    window.selectedImages = new Set();
+    const observedItems = new Set();
+
+    function observeListItems() {
+      const listDiv = document.querySelector('div[role="list"]');
+
+      if (!listDiv) {
+        console.warn("No div with role='list' found.");
+        return;
+      }
+
+      console.log("Setting up IntersectionObserver for list items...");
+
+      // IntersectionObserver for visibility tracking of list items
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const listItem = entry.target;
+
+            if (listItem.getAttribute("role") === "listitem" && !observedItems.has(listItem)) {
+              console.log("List item became visible:", listItem);
+              observedItems.add(listItem); // Mark as observed
+              fetchImagesFromListItem(listItem); // Process images in the visible list item
+            }
+          }
+        });
+      },  { root: listDiv, threshold: 0.1 }
+    );
+
+      // Observe all existing children with role="listitem"
+      listDiv.querySelectorAll('[role="listitem"]').forEach((listItem) => {
+        observer.observe(listItem);
+      });
+
+      // Set up a MutationObserver to detect new children added dynamically
+      const mutationObserver = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          mutation.addedNodes.forEach((node) => {
+            if (
+              node.nodeType === Node.ELEMENT_NODE &&
+              node.getAttribute("role") === "listitem"
+            ) {
+              console.log("New list item detected:", node);
+              observer.observe(node); // Observe the new list item
+            }
+          });
+        });
+      });
+
+      // Observe the parent list for changes in its child nodes
+      mutationObserver.observe(listDiv, {
+        childList: true,
+        subtree: true,
+      });
+
+      console.log("Observers are now active for list items.");
+    }
+
+
+    function updateImageCount() {
+      const imageCount = document.getElementById("image-count");
+      imageCount.textContent = `Selected Images Count: ${window.selectedImages.size}`;
+    }
+    function fetchImagesFromListItem(listItem) {
+      const images = listItem.querySelectorAll("img");
+      const imageList = document.getElementById("selected-images-list");
+
+      images.forEach((img) => {
+        if (img.src && !window.selectedImages.has(img.src)) {
+          console.log("Image found:", img.src);
+          window.selectedImages.add(img.src); // Add to selected images
+
+          // Create and append the image element to the imageList
+          const imgElement = document.createElement("img");
+          imgElement.src = img.src;
+          imgElement.style.width = "100px";
+          imgElement.style.height = "150px";
+          imgElement.style.marginRight = "10px";
+          imgElement.style.borderRadius = "8px";
+          imgElement.style.objectFit = "cover";
+
+          imageList.appendChild(imgElement);
+          updateImageCount(); // Update the image count in the panel
+        }
+      });
+    }
+
+    // Start observing
+    observeListItems();
+
+ 
+    function autoScroll() {
+      if (window.scrollInterval) return; // Prevent multiple intervals
     
-    });
-    updatePanel();
-  }
-}
+      document.body.style.overflow = "hidden"; // Temporarily disable manual scrolling
+      window.scrollInterval = setInterval(() => {
+        const scrollHeight = document.documentElement.scrollHeight;
+        const clientHeight = document.documentElement.clientHeight;
+        const scrollPosition = window.scrollY + clientHeight;
+    
+        if (scrollPosition < scrollHeight - 1) {
+          // Scroll down by 1000 pixels
+          window.scrollBy({ top: 1000, behavior: "smooth" });
+        } else {
+          // Stop auto-scroll when at the bottom
+          stopAutoScrollAndObserver();
+        }
+      }, 1500); // Scroll every 1.5 seconds
+    }
+    
+    function stopAutoScrollAndObserver() {
+      if (window.scrollInterval) {
+        clearInterval(window.scrollInterval);
+        window.scrollInterval = null;
+      }
+      if (window.imageObserver) {
+        window.imageObserver.disconnect();
+        window.imageObserver = null;
+        console.log("Stopped auto-scroll and observer.");
+      }
+      document.body.style.overflow = "auto"; // Re-enable manual scrolling
+    }
+    
 
 function clearSelectedImages() {
   selectedImages = [];  // Clear the selected images array
@@ -157,7 +178,7 @@ async function startFetchingImages() {
   }
 
   // Now start observing and auto-scrolling
-  observeImageList();
+  // observeImageList();
   autoScroll();  // Start smooth auto-scroll
 }
 
@@ -189,7 +210,7 @@ async function fetchImagesButtonClick() {
 
 function injectPanel() {
 
-  document.body.style.backgroundColor = 'green';
+  
   const panel = document.createElement('div');
   panel.id = 'image-selection-panel';
   panel.style.position = 'fixed';
@@ -342,14 +363,39 @@ function updatePanel() {
   imageCount.textContent = `Selected Images Count: ${selectedImages.length}`;
 }
 
-// Handle downloading selected images
 function downloadSelectedImages() {
-  console.log("selectedImages", selectedImages)
-  chrome.runtime.sendMessage({ action: 'downloadImages', images: selectedImages }, (response) => {
-    console.log('Download started', response);
-  });
-}
+  const zip = new JSZip();
+  const folder = zip.folder("selected_images");
+  const imagePromises = [];
 
+  // Loop through the selected images and add them to the zip
+  window.selectedImages.forEach((imageUrl) => {
+    const fileName = imageUrl.split("/").pop().split("?")[0]; // Extract the filename from the URL
+    imagePromises.push(
+      fetch(imageUrl)
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error(`Failed to fetch ${imageUrl}`);
+          }
+          return response.blob();
+        })
+        .then((blob) => {
+          folder.file(fileName, blob); // Add the image as a file in the zip folder
+        })
+        .catch((error) => console.error("Error fetching image:", error))
+    );
+  });
+
+  // Once all images are fetched, generate the zip and save it
+  Promise.all(imagePromises)
+    .then(() => {
+      zip.generateAsync({ type: "blob" }).then((content) => {
+        saveAs(content, "selected_images.zip");
+        console.log("Download complete.");
+      });
+    })
+    .catch((error) => console.error("Error creating zip file:", error));
+}
 
 // Handle image selection
 document.addEventListener('click', function(event) {

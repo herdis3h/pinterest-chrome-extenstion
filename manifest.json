@@ -4,7 +4,7 @@
   "manifest_version": 3,
   "version": "0.1",
   "description": "Turns the page red when you click the icon",
-  "permissions": ["activeTab", "scripting", "downloads", "downloads.open"],
+  "permissions": ["activeTab", "storage", "scripting", "downloads", "downloads.open"],
   "background": {
     "service_worker": "service-worker.js"
   },

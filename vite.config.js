@@ -14,7 +14,6 @@ export default defineConfig({
     rollupOptions: {
       input: {
         'service-worker': resolve(__dirname, 'service-worker.jsx'), // Background service worker
-        'popup': resolve(__dirname, 'popup.html'), // Popup HTML
         'content': resolve(__dirname, 'content.js'), // Content script
       },
       output: {
@@ -22,12 +21,19 @@ export default defineConfig({
         chunkFileNames: '[name].js',
         assetFileNames: '[name].[ext]',
       },
+      external: [
+        'puppeteer', // Mark puppeteer as external
+        'url',       // Exclude Node.js modules
+        'http',
+        'https',
+      ],
     },
     outDir: 'dist',
     target: 'esnext', 
     emptyOutDir: true,
     esbuild: {
       jsxInject: `import JSZip from 'jszip'`, // Optional: if React JSX is used
+      
     },     
   },
 });

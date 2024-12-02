@@ -14,6 +14,7 @@
   "dependencies": {
     "file-saver": "^2.0.5",
     "jszip": "^3.10.1",
+    "puppeteer": "^23.9.0",
     "vite": "^6.0.1"
   },
   "devDependencies": {
