@@ -2,30 +2,90 @@ import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 
 (function() {
- 
- 
-  if (window.imageSelectionScriptActive) {
-    // Cleanup if the script is active
-    const existingPanel = document.getElementById('image-selection-panel');
-    if (existingPanel) existingPanel.remove();
+    // Prevent multiple script injections
+    if (window.imageSelectionScriptActive) {
+      
+      console.log("Script is already active. Cleaning up...");
+      const existingPanel = document.getElementById("image-selection-panel");
+      if (existingPanel) existingPanel.remove();
   
-    // Clear intervals and observers
+      if (window.scrollInterval) clearInterval(window.scrollInterval);
+      if (window.imageObserver) window.imageObserver.disconnect();
+  
+      document.body.style.overflow = "";
+      delete window.selectedImages;
+      delete window.scrollInterval;
+      delete window.imageObserver;
+      delete window.imageSelectionScriptActive;
+
+      const scriptTags = document.querySelectorAll('script[src*="content.js"]'); // Replace with your actual script URL
+      scriptTags.forEach((scriptTag) => {
+        scriptTag.parentNode.removeChild(scriptTag);
+        console.log("Script tag removed.");
+      });
+  
+      return;
+    }
+
+  function isPinterestBoard() {
+    const url = new URL(window.location.href);
+    const pathSegments = url.pathname.split("/").filter(Boolean);
+    return pathSegments.length === 2; // A board URL has exactly 2 path segments after the domain
+  }
+
+  function showMessage(message) {
+    const panel = document.createElement("div");
+    panel.id = "image-selection-panel";
+    panel.style.position = "fixed";
+    panel.style.top = "50px";
+    panel.style.right = "0";
+    panel.style.width = "600px";
+    panel.style.height = "700px";
+    panel.style.background = "white";
+    panel.style.border = "none";
+    panel.style.borderRadius = "20px";
+    panel.style.padding = "15px";
+    panel.style.zIndex = "10000";
+
+    const messageElement = document.createElement("p");
+    messageElement.textContent = message;
+    messageElement.style.color = "#d9534f"; // Red text for error
+    messageElement.style.textAlign = "center";
+
+    panel.appendChild(messageElement);
+    document.body.appendChild(panel);
+  }
+
+  function setupUI() {
+    // Call this function to inject your UI when on a board
+    injectPanel();
+    observeListItems(); // Start observing the board
+  }
+
+   /**
+   * Clean up the script if it's already active.
+   */
+   function cleanUp() {
+    const existingPanel = document.getElementById("image-selection-panel");
+    if (existingPanel) existingPanel.remove();
+
     if (window.scrollInterval) clearInterval(window.scrollInterval);
     if (window.imageObserver) window.imageObserver.disconnect();
-  
-    // Reset any style changes
-    document.body.style.backgroundColor = '';
-    document.body.style.overflow = '';
-  
-    // Reset global variables
+
+    document.body.style.overflow = "";
     delete window.selectedImages;
     delete window.scrollInterval;
     delete window.imageObserver;
     delete window.imageSelectionScriptActive;
-  
+
     console.log("Content script removed.");
-  } else {
+  }
  
+   // If the script is already active, destroy it.
+   if (window.imageSelectionScriptActive) {
+    cleanUp();
+    return;
+  }
 
     window.imageSelectionScriptActive = true;
     window.selectedImages = new Set();
@@ -216,7 +276,7 @@ function injectPanel() {
   panel.style.position = 'fixed';
   panel.style.top = '50px';
   panel.style.right = '0';
-  panel.style.width = '250px';
+  panel.style.width = '650px';
   panel.style.background = 'white';
   panel.style.border = 'none';
   panel.style.borderRadius = '20px';
@@ -241,7 +301,7 @@ function injectPanel() {
   selectedImageList.id = 'selected-images-list';
   selectedImageList.style.display = 'flex';  // Display images in a row
   selectedImageList.style.position = 'relative';  // Display images in a row
-  selectedImageList.style.height = '150px';  // Enable horizontal scrolling
+  selectedImageList.style.height = '300px';  // Enable horizontal scrolling
   selectedImageList.style.overflowX = 'auto';  // Enable horizontal scrolling
   selectedImageList.style.overflowY = 'hidden';  // Enable horizontal scrolling
   selectedImageList.style.whiteSpace = 'nowrap';  // Prevent line breaks
@@ -417,5 +477,5 @@ document.addEventListener('click', function(event) {
   }
 });
 injectPanel();
-}
+ 
 })();
