@@ -45,26 +45,46 @@ function autoScroll() {
 // Set up a MutationObserver to detect new images
 function observeImageList() {
   const listDiv = document.querySelector('div[role="list"]');
-  console.log("observeImageList", listDiv)
   if (!listDiv) {
-    console.log('No div with role="list" found.');
-    return;
+      console.warn('No div with role="list" found.');
+      return;
   }
 
-  observer = new MutationObserver((mutations) => {
-    mutations.forEach((mutation) => {
-      // console.log("Mutation detected: ", mutation);
-      if (mutation.addedNodes.length || mutation.type === 'attributes') {
-        fetchImages();  // Fetch new images when new nodes are added
-      }
-    });
+  console.log("Setting up observers for dynamic list items...");
+
+  // IntersectionObserver for visibility tracking
+  const visibilityObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+          if (entry.isIntersecting) {
+              console.log("List item became visible:", entry.target);
+              fetchImagesFromListItem(entry.target); // Fetch images from the visible list item
+          }
+      });
+  }, {
+      root: listDiv,   // Observe only within the listDiv
+      rootMargin: '0px', // Adjust if needed to trigger earlier
+      threshold: 0.1,  // Trigger when at least 10% of the list item is visible
   });
 
-  observer.observe(listDiv, {
-    childList: true, // Watch for child node additions/removals
-    attributes: true, // Watch for attribute changes
-    subtree: true // Watch all descendants
+  // MutationObserver for dynamically added list items
+  const mutationObserver = new MutationObserver((mutations) => {
+      mutations.forEach(mutation => {
+          mutation.addedNodes.forEach(node => {
+              if (node.nodeType === Node.ELEMENT_NODE && node.getAttribute('role') === 'listitem') {
+                  console.log("New list item detected:", node);
+                  visibilityObserver.observe(node); // Start observing the new list item
+              }
+          });
+      });
   });
+
+  // Start observing the listDiv for new list items
+  mutationObserver.observe(listDiv, {
+      childList: true,
+      subtree: true,
+  });
+
+  console.log("MutationObserver and IntersectionObserver are active.");
 }
 
 // Stop auto-scroll and observer
@@ -124,6 +144,7 @@ function clearSelectedImages() {
 
 // Start observing and scrolling
 async function startFetchingImages() {
+  console.log("startFetchingImages")
   const listDiv = document.querySelector('div[role="list"]');
 
   if (listDiv) {
