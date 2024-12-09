@@ -346,8 +346,11 @@ function injectPanel() {
   panel.id = 'image-selection-panel';
   panel.style.position = 'fixed';
   panel.style.top = '50px';
-  panel.style.right = '0';
+  panel.style.right = '1rem';
   panel.style.width = '650px';
+  panel.style.boxShadow = 'rgba(14, 63, 126, 0.06) 0px 0px 0px 1px, rgba(42, 51, 70, 0.03) 0px 1px 1px -0.5px, rgba(42, 51, 70, 0.04) 0px 2px 2px -1px, rgba(42, 51, 70, 0.04) 0px 3px 3px -1.5px, rgba(42, 51, 70, 0.03) 0px 5px 5px -2.5px, rgba(42, 51, 70, 0.03) 0px 10px 10px -5px, rgba(42, 51, 70, 0.03) 0px 24px 24px -8px;';
+  panel.style.overflowY = 'auto';
+  panel.style.overflowX = 'hidden';
   panel.style.background = 'white';
   panel.style.border = 'none';
   panel.style.borderRadius = '20px';
@@ -629,7 +632,7 @@ function updatePanel() {
   });
 
   // Update the count of selected images
-  imageCount.textContent = `Selected Images Count: ${window.selectedImages.length}`;
+  imageCount.textContent = `Images Count: ${window.selectedImages.length}`;
 }
 
 function downloadSelectedImages() {
