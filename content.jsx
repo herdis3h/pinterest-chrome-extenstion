@@ -253,6 +253,27 @@ function initializeListItemsObserver(listDiv) {
     window.imageObserver.observe(listItem);
   });
 
+  // Set up a MutationObserver to dynamically observe new list items
+  const mutationObserver = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      mutation.addedNodes.forEach((node) => {
+        if (
+          node.nodeType === Node.ELEMENT_NODE &&
+          node.getAttribute("role") === "listitem"
+        ) {
+          console.log("New list item detected:", node);
+          window.imageObserver.observe(node); // Observe the new list item
+        }
+      });
+    });
+  });
+
+  // Observe the parent list div for dynamically added list items
+  mutationObserver.observe(listDiv, {
+    childList: true,
+    subtree: true,
+  });
+
   console.log("Observers are now active for list items in:", listDiv);
 }
 
@@ -300,6 +321,7 @@ function initializeListItemsObserver(listDiv) {
           imgElement.style.objectFit = "cover";
     
           imageList.appendChild(imgElement);
+          imageList.scrollTop = imageList.scrollHeight;
           updateImageCount(); // Update the image count in the panel
         }
       });
@@ -570,6 +592,7 @@ function injectPanel() {
 
   // Download Button with Icon
   const downloadButton = document.createElement('button');
+  downloadButton.id = "download-button"
   downloadButton.style.border = '0'; 
   downloadButton.style.borderRadius = '20px'; 
   downloadButton.style.padding = '10px 15px'; 
@@ -578,7 +601,7 @@ function injectPanel() {
 
   const exportIcon = document.createElement('span');
   exportIcon.innerHTML = `
-    Download as .zip
+    Download as . 
     <svg style="height: 16px;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M288 32c0-17.7-14.3-32-32-32s-32 14.3-32 32l0 242.7-73.4-73.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l128 128c12.5 12.5 32.8 12.5 45.3 0l128-128c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L288 274.7 288 32zM64 352c-35.3 0-64 28.7-64 64l0 32c0 35.3 28.7 64 64 64l384 0c35.3 0 64-28.7 64-64l0-32c0-35.3-28.7-64-64-64l-101.5 0-45.3 45.3c-25 25-65.5 25-90.5 0L165.5 352 64 352zm368 56a24 24 0 1 1 0 48 24 24 0 1 1 0-48z"/></svg>
   `;
   
@@ -608,6 +631,17 @@ function injectPanel() {
   observeMainContainer();
   toggleUI();
 }
+
+function updateDownloadButtonText() {
+  const downloadButton = document.getElementById('download-button');
+  if (!downloadButton) return;
+
+  const totalImages = window.selectedImages.size;
+  const selectedImages = window.selectExportImages.size;
+
+  downloadButton.innerHTML = `Download as zip (${selectedImages}/${totalImages} selected) <svg style="height: 16px;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M288 32c0-17.7-14.3-32-32-32s-32 14.3-32 32l0 242.7-73.4-73.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l128 128c12.5 12.5 32.8 12.5 45.3 0l128-128c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L288 274.7 288 32zM64 352c-35.3 0-64 28.7-64 64l0 32c0 35.3 28.7 64 64 64l384 0c35.3 0 64-28.7 64-64l0-32c0-35.3-28.7-64-64-64l-101.5 0-45.3 45.3c-25 25-65.5 25-90.5 0L165.5 352 64 352zm368 56a24 24 0 1 1 0 48 24 24 0 1 1 0-48z"/></svg>`;
+}
+
 
 function toggleUI() {
   // profile-pins-grid
