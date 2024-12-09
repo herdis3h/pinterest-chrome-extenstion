@@ -4,6 +4,9 @@ import { saveAs } from 'file-saver';
 console.log("JSZip is available:", typeof JSZip !== 'undefined' ? "Yes" : "No");
 
 (function() {
+
+  window.selectedImages = new Set();
+  window.selectExportImages = new Set(); 
  
   function reinitializeScript() {
     console.log("Reinitializing script...");
@@ -18,11 +21,6 @@ console.log("JSZip is available:", typeof JSZip !== 'undefined' ? "Yes" : "No");
     // Restore the body's overflow property
     document.body.style.overflow = "hidden";
 
-    // Reinitialize selected images if not already present
-    if (!window.selectedImages) {
-      window.selectedImages = new Set();
-      console.log("Reinitialized selected images set.");
-    }
 
     // Restart the observer
     if (!window.imageObserver) {
@@ -196,7 +194,7 @@ function reinitializeScript() {
       const imageCount = document.getElementById("image-count");
       imageCount.textContent = `Selected Images Count: ${window.selectedImages.size}`;
     }
-    
+
     function fetchImagesFromListItem(listItem) {
       const images = listItem.querySelectorAll("img");
       const imageList = document.getElementById("selected-images-list");
@@ -369,15 +367,20 @@ function injectPanel() {
 
   const selectedImageList = document.createElement('div');
   selectedImageList.id = 'selected-images-list';
-  selectedImageList.style.display = 'flex';  // Display images in a row
+  selectedImageList.style.display = 'grid';  // Display images in a row
+  selectedImageList.style.gridTemplateColumns = 'repeat(auto-fill, minmax(100px, 1fr))';
+  selectedImageList.style.flexDirection = 'row';
+  selectedImageList.style.flexWrap = 'wrap';
+  selectedImageList.style.gap = '1rem';
+  selectedImageList.style.width = '100%';
+  selectedImageList.style.whiteSpace = 'nowrap';  // Prevent line breaks
   selectedImageList.style.position = 'relative';  // Display images in a row
   selectedImageList.style.height = '300px';  // Enable horizontal scrolling
-  selectedImageList.style.overflowX = 'auto';  // Enable horizontal scrolling
-  selectedImageList.style.overflowY = 'hidden';  // Enable horizontal scrolling
-  selectedImageList.style.whiteSpace = 'nowrap';  // Prevent line breaks
+  selectedImageList.style.overflowX = 'hidden';  // Enable horizontal scrolling
+  selectedImageList.style.overflowY = 'auto';  // Enable horizontal scrolling
   selectedImageList.style.border = '1px solid #dbdbdb';  // Prevent line breaks
   selectedImageList.style.borderRadius = '8px';  // Prevent line breaks
-  selectedImageList.style.padding = '5px';  // Prevent line breaks
+  selectedImageList.style.padding = '1rem';  // Prevent line breaks
   selectedImageList.style.background = '#f5f5f5';  // Prevent line breaks
   selectedImageList.style.marginBottom = '10px';  // Prevent line breaks
 
@@ -439,7 +442,7 @@ function injectPanel() {
   clearButton.style.padding = '10px 15px'; 
   clearButton.style.width = 'fit-content'; 
   clearButton.onclick = clearSelectedImages;
-  actionButtonsContainer.appendChild(clearButton);
+  // actionButtonsContainer.appendChild(clearButton);
 
   // Download Button with Icon
   const downloadButton = document.createElement('button');
@@ -451,6 +454,61 @@ function injectPanel() {
 
   const exportIcon = document.createElement('span');
   exportIcon.innerHTML = `<svg style="height: 16px;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M288 32c0-17.7-14.3-32-32-32s-32 14.3-32 32l0 242.7-73.4-73.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l128 128c12.5 12.5 32.8 12.5 45.3 0l128-128c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L288 274.7 288 32zM64 352c-35.3 0-64 28.7-64 64l0 32c0 35.3 28.7 64 64 64l384 0c35.3 0 64-28.7 64-64l0-32c0-35.3-28.7-64-64-64l-101.5 0-45.3 45.3c-25 25-65.5 25-90.5 0L165.5 352 64 352zm368 56a24 24 0 1 1 0 48 24 24 0 1 1 0-48z"/></svg>`;
+
+  // Add Select All and Deselect All Buttons
+  const selectAllButton = document.createElement('button');
+  selectAllButton.textContent = 'Select All';
+  selectAllButton.style.border = '0';
+  selectAllButton.style.borderRadius = '20px';
+  selectAllButton.style.padding = '10px 15px';
+  selectAllButton.style.width = '100%';
+  selectAllButton.style.backgroundColor = '#3498db';
+  selectAllButton.style.color = 'white';
+  selectAllButton.onclick = () => {
+    console.log("Selecting all images...");
+  
+    // window.selectedImages.forEach((imageUrl) => {
+    //   if (!window.selectExportImages.has(imageUrl)) {
+    //     window.selectExportImages.add(imageUrl); // Add to selectExportImages
+    //   }
+      
+      // Ensure the <img> element is updated
+      const imgElements = document.querySelectorAll(`#selected-images-list img`);
+      console.log("imgElements", imgElements)
+      if (imgElements) {
+        imgElements.forEach((imgElement) => {
+          // imgElement.style.outline = '2px solid red'; // Apply the red outline
+          imgElement.classList.add("active")
+        });
+      }
+      console.log("All selected images added to export.", imgElements);
+    // });
+  };
+  
+
+  const deselectAllButton = document.createElement('button');
+  deselectAllButton.textContent = 'Deselect All';
+  deselectAllButton.style.border = '0';
+  deselectAllButton.style.borderRadius = '20px';
+  deselectAllButton.style.padding = '10px 15px';
+  deselectAllButton.style.width = '100%';
+  deselectAllButton.style.backgroundColor = '#e74c3c';
+  deselectAllButton.style.color = 'white';
+  deselectAllButton.onclick = () => {
+    const images = document.querySelectorAll('#selected-images-list img');
+    console.log("deselectAllButton", images)
+    if(images.length > 0) {
+
+      images.forEach(img => {
+        img.classList.remove("active")
+      });
+      window.selectExportImages.clear();
+    }
+    // updateImageCount();
+  };
+
+  buttonContainer.appendChild(selectAllButton);
+  buttonContainer.appendChild(deselectAllButton);
   
   panel.appendChild(panelContent);
   // Error message
@@ -481,7 +539,7 @@ function injectPanel() {
 }
 
 function toggleUI() {
-  const profilePinsGrid = document.querySelector('[data-test-id="profile-pins-grid"]');
+  const profilePinsGrid = document.querySelector('[data-test-id="board-feed"]');
   const panelContent = document.getElementById("panel-content")
   console.log("panelContent", panelContent)
   const errorMessage = document.getElementById("error-message")
@@ -528,7 +586,11 @@ style.innerHTML = `
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
-}`;
+}
+ .active {
+    outline: 2px solid red; /* Define the active outline */
+  }  
+`;
 document.getElementsByTagName('head')[0].appendChild(style);
 
  
@@ -537,19 +599,21 @@ document.getElementsByTagName('head')[0].appendChild(style);
 function updatePanel() {
   const imageList = document.getElementById('selected-images-list');
   const imageCount = document.getElementById('image-count');
-  imageList.innerHTML = '';
+  // imageList.innerHTML = '';
   
-  selectedImages.forEach((src, index) => {
+  window.selectedImages.forEach((src, index) => {
     const img = document.createElement('img');
     img.src = src;
     img.style.width = '100px';
     img.style.height = '150px';
     img.style.marginRight = '10px';
+    img.classList.add("pin-image");
+    img.setAttribute("class", "pin-image");
     imageList.appendChild(img);
   });
 
   // Update the count of selected images
-  imageCount.textContent = `Selected Images Count: ${selectedImages.length}`;
+  imageCount.textContent = `Selected Images Count: ${window.selectedImages.length}`;
 }
 
 function downloadSelectedImages() {
@@ -557,25 +621,35 @@ function downloadSelectedImages() {
   const folder = zip.folder("selected_images");
   const imagePromises = [];
 
-  // Loop through the selected images and add them to the zip
-  window.selectedImages.forEach((imageUrl) => {
-    const fileName = imageUrl.split("/").pop().split("?")[0]; // Extract the filename from the URL
+  if (window.selectExportImages.size === 0) {
+    console.log("No images selected for export.");
+    alert("Please select images to export before downloading.");
+    return;
+  }
+
+  // Loop through the selected images in selectExportImages and add them to the zip
+  window.selectExportImages.forEach((imageUrl) => {
+    const fileName = imageUrl.split("/").pop().split("?")[0]; // Extract the filename
+    const pngFileName = fileName.replace(/\.[a-zA-Z]+$/, "") + ".png"; // Ensure .png extension
+
     imagePromises.push(
       fetch(imageUrl)
         .then((response) => {
           if (!response.ok) {
-            throw new Error(`Failed to fetch ${imageUrl}`);
+            throw new Error(`Failed to fetch image: ${imageUrl}`);
           }
           return response.blob();
         })
         .then((blob) => {
-          folder.file(fileName, blob); // Add the image as a file in the zip folder
+          folder.file(pngFileName, blob); // Save the image as .png in the zip folder
         })
-        .catch((error) => console.error("Error fetching image:", error))
+        .catch((error) => {
+          console.error("Error fetching image:", error);
+        })
     );
   });
 
-  // Once all images are fetched, generate the zip and save it
+  // Once all images are fetched, generate the zip and trigger download
   Promise.all(imagePromises)
     .then(() => {
       zip.generateAsync({ type: "blob" }).then((content) => {
@@ -583,28 +657,38 @@ function downloadSelectedImages() {
         console.log("Download complete.");
       });
     })
-    .catch((error) => console.error("Error creating zip file:", error));
+    .catch((error) => {
+      console.error("Error creating zip file:", error);
+    });
 }
 
-// Handle image selection
+
+
 document.addEventListener('click', function(event) {
+
   if (event.target.tagName.toLowerCase() === 'img') {
     const img = event.target.closest('img');
+    const imageUrl = img.src;
 
-    if (selectedImages.includes(img.src)) {
-      // Deselect image
-      img.style.border = '';
-      selectedImages = selectedImages.filter(url => url !== img.src);
+    // Toggle selection in selectExportImages
+    if (img.classList.contains("active")) {
+      // Deselect for export
+      // img.style.border = ''; // Remove the red border
+      img.classList.remove("active")
+      window.selectExportImages.delete(imageUrl);
+      console.log(`Removed from export: ${imageUrl}`);
     } else {
-      // Select image
-      img.style.border = '5px solid red';
-      selectedImages.push(img.src);
+      // Select for export
+      img.classList.add("active")
+      // img.style.outline = '2px solid red'; // Add a red border
+      window.selectExportImages.add(imageUrl);
+      console.log(`Added to export: ${imageUrl}`);
     }
 
-    // Update selected images panel
-    updatePanel();
   }
 });
+
+
 injectPanel();
  
 })();
