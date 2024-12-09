@@ -6,66 +6,76 @@ console.log("JSZip is available:", typeof JSZip !== 'undefined' ? "Yes" : "No");
 (function() {
 
   window.selectedImages = new Set();
+  window.observedItems = new Set();
   window.selectExportImages = new Set(); 
  
   function reinitializeScript() {
     console.log("Reinitializing script...");
 
-    // Make the panel visible again
+      // Clear observedItems set
+  window.observedItems.clear();
+  
+    // Re-inject the panel if it doesn't exist
     const existingPanel = document.getElementById("image-selection-panel");
     if (existingPanel) {
       existingPanel.style.display = "block";
       console.log("Restored visibility of image selection panel.");
+    } else {
+      injectPanel();
     }
-
-    // Restore the body's overflow property
-    document.body.style.overflow = "hidden";
-
-
-    // Restart the observer
-    if (!window.imageObserver) {
-      observeListItems();
-      console.log("Reinitialized image observer.");
+  
+    // Restore selected images to the panel
+    if (window.selectedImages.size > 0) {
+      restoreImagesToPanel();
     }
- 
+  
+    // Restart all observers
+    restartObservers();
+  
     console.log("Script reinitialization complete.");
   }
- 
+  
   function cleanUp() {
     console.log("Cleaning up script...");
   
-    // Hide the injected panel if it exists
     const existingPanel = document.getElementById("image-selection-panel");
     if (existingPanel) {
       existingPanel.style.display = "none";
-      console.log("Hid image selection panel.");
+      existingPanel.remove();
+      console.log("Removed image selection panel.");
     }
   
-    // Clear any global intervals
     if (window.scrollInterval) {
       clearInterval(window.scrollInterval);
       window.scrollInterval = null;
       console.log("Cleared scroll interval.");
     }
   
-    // Disconnect any active observers
     if (window.imageObserver) {
       window.imageObserver.disconnect();
       window.imageObserver = null;
       console.log("Disconnected image observer.");
     }
   
-    // Clear the selected images without removing the reference
-    if (window.selectedImages) {
-      window.selectedImages.clear();
-      console.log("Cleared selected images.");
+    if (window.mainContainerObserver) {
+      window.mainContainerObserver.disconnect();
+      window.mainContainerObserver = null;
+      console.log("Disconnected main container observer.");
     }
   
-    // Restore the body's overflow property
-    document.body.style.overflow = "auto";
+    if (window.mainContainerObserver2) {
+      window.mainContainerObserver2.disconnect();
+      window.mainContainerObserver2 = null;
+      console.log("Disconnected additional container observer.");
+    }
   
-    console.log("Cleanup complete. Script remains active but UI and observers are cleared.");
+    window.selectedImages.clear();
+    window.selectExportImages.clear();
+  
+    document.body.style.overflow = "auto";
+    console.log("Cleanup complete. Script functions and observers disabled.");
   }
+  
   
   
 
@@ -88,11 +98,8 @@ console.log("JSZip is available:", typeof JSZip !== 'undefined' ? "Yes" : "No");
 
   if (message.action === "pageUpdated") {
     console.log("pageUpdated UI...");
-    // toggleUI()
-
-    document.addEventListener('DOMContentLoaded', () => {
-  console.log('askdjlkas')
-    });
+    toggleUI()
+ 
 
     sendResponse({ status: "Script pageUpdated" });
   }
@@ -101,38 +108,34 @@ console.log("JSZip is available:", typeof JSZip !== 'undefined' ? "Yes" : "No");
 function reinitializeScript() {
   console.log("Reinitializing script...");
 
-  // Make the panel visible again
+  // Re-inject the panel if it doesn't exist
   const existingPanel = document.getElementById("image-selection-panel");
   if (existingPanel) {
     existingPanel.style.display = "block";
     console.log("Restored visibility of image selection panel.");
   } else {
-    // If panel doesn't exist, inject it again
     injectPanel();
   }
 
-  // Restore the body's overflow property
-  document.body.style.overflow = "hidden";
-
-  // Reinitialize selected images if not already present
+  // Restore selected images set
   if (!window.selectedImages) {
     window.selectedImages = new Set();
     console.log("Reinitialized selected images set.");
   }
 
-  // Restart the observer
+  // Restart IntersectionObserver
   if (!window.imageObserver) {
     observeListItems();
     console.log("Reinitialized image observer.");
   }
- 
+
+  // Restart MutationObservers
+  observeMainContainer();
 
   console.log("Script reinitialization complete.");
 }
 
 
-    window.selectedImages = new Set();
-    const observedItems = new Set();
 
     function observeListItems() {
       const listDiv = document.querySelector('div[role="list"]');
@@ -142,17 +145,24 @@ function reinitializeScript() {
         return;
       }
 
-      console.log("Setting up IntersectionObserver for list items...");
+        // Disconnect any existing observer before creating a new one
+        if (window.imageObserver) {
+          window.imageObserver.disconnect();
+          console.log("Disconnected existing IntersectionObserver.");
+        }
+        
+        window.observedItems.clear()
+      console.log("Setting up IntersectionObserver for list items...",  window.imageObserver );
 
       // IntersectionObserver for visibility tracking of list items
-      const observer = new IntersectionObserver((entries) => {
+      window.imageObserver = new IntersectionObserver((entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
             const listItem = entry.target;
-
-            if (listItem.getAttribute("role") === "listitem" && !observedItems.has(listItem)) {
+            console.log("listItem", listItem, window.observedItems)
+            if (listItem.getAttribute("role") === "listitem" && !window.observedItems.has(listItem)) {
               console.log("List item became visible:", listItem);
-              observedItems.add(listItem); // Mark as observed
+              window.observedItems.add(listItem); // Mark as observed
               fetchImagesFromListItem(listItem); // Process images in the visible list item
             }
           }
@@ -162,11 +172,11 @@ function reinitializeScript() {
 
       // Observe all existing children with role="listitem"
       listDiv.querySelectorAll('[role="listitem"]').forEach((listItem) => {
-        observer.observe(listItem);
+        window.imageObserver.observe(listItem);
       });
-
+      console.log("Setting up IntersectionObserver for list items...",  window.imageObserver );
       // Set up a MutationObserver to detect new children added dynamically
-      const mutationObserver = new MutationObserver((mutations) => {
+      window.mainContainerObserver = new MutationObserver((mutations) => {
         mutations.forEach((mutation) => {
           mutation.addedNodes.forEach((node) => {
             if (
@@ -174,14 +184,14 @@ function reinitializeScript() {
               node.getAttribute("role") === "listitem"
             ) {
               console.log("New list item detected:", node);
-              observer.observe(node); // Observe the new list item
+              window.imageObserver.observe(node); // Observe the new list item
             }
           });
         });
       });
 
       // Observe the parent list for changes in its child nodes
-      mutationObserver.observe(listDiv, {
+      mainContainerObserver.observe(listDiv, {
         childList: true,
         subtree: true,
       });
@@ -196,6 +206,7 @@ function reinitializeScript() {
     }
 
     function fetchImagesFromListItem(listItem) {
+      console.log("fetchImagesFromListItemfetchImagesFromListItem", listItem)
       const images = listItem.querySelectorAll("img");
       const imageList = document.getElementById("selected-images-list");
     
@@ -331,7 +342,6 @@ async function fetchImagesButtonClick() {
 
 function injectPanel() {
 
-  
   const panel = document.createElement('div');
   panel.id = 'image-selection-panel';
   panel.style.position = 'fixed';
@@ -466,23 +476,21 @@ function injectPanel() {
   selectAllButton.style.color = 'white';
   selectAllButton.onclick = () => {
     console.log("Selecting all images...");
-  
-    // window.selectedImages.forEach((imageUrl) => {
-    //   if (!window.selectExportImages.has(imageUrl)) {
-    //     window.selectExportImages.add(imageUrl); // Add to selectExportImages
-    //   }
-      
-      // Ensure the <img> element is updated
-      const imgElements = document.querySelectorAll(`#selected-images-list img`);
-      console.log("imgElements", imgElements)
-      if (imgElements) {
-        imgElements.forEach((imgElement) => {
-          // imgElement.style.outline = '2px solid red'; // Apply the red outline
-          imgElement.classList.add("active")
-        });
-      }
-      console.log("All selected images added to export.", imgElements);
-    // });
+ 
+    const imgElements = document.querySelectorAll(`#selected-images-list img`);
+    console.log("imgElements", imgElements)
+    if (imgElements) {
+      imgElements.forEach((imgElement) => {
+        const imageUrl = imgElement.src;
+        if (!window.selectExportImages.has(imageUrl)) {
+          // Add to the export set and mark as selected
+          window.selectExportImages.add(imageUrl);
+          imgElement.classList.add("active");
+        }
+      });
+    }
+    console.log("All selected images added to export.", imgElements);
+
   };
   
 
@@ -496,7 +504,7 @@ function injectPanel() {
   deselectAllButton.style.color = 'white';
   deselectAllButton.onclick = () => {
     const images = document.querySelectorAll('#selected-images-list img');
-    console.log("deselectAllButton", images)
+ 
     if(images.length > 0) {
 
       images.forEach(img => {
@@ -522,7 +530,6 @@ function injectPanel() {
   errorMessage.style.color = 'white';
   errorMessage.style.zIndex = '10000';
   errorMessage.style.borderRadius = '5px';
-  // errorMessage.style.display = 'none'; 
   panel.appendChild(errorMessage);
   
   // Append the icon and text to the download button
@@ -534,12 +541,13 @@ function injectPanel() {
   
   document.body.appendChild(panel);
 
-  toggleUI();
   observeMainContainer();
+  toggleUI();
 }
 
 function toggleUI() {
-  const profilePinsGrid = document.querySelector('[data-test-id="board-feed"]');
+  // profile-pins-grid
+  const profilePinsGrid = document.querySelector('[data-test-id="board-feed"], [data-test-id="profile-pins-grid"]');
   const panelContent = document.getElementById("panel-content")
   console.log("panelContent", panelContent)
   const errorMessage = document.getElementById("error-message")
@@ -554,6 +562,14 @@ function toggleUI() {
   }
 }
 
+function restartObservers() {
+  console.log("Restarting observers...");
+  observeListItems(); // Reactivate IntersectionObserver
+  observeMainContainer(); // Reactivate MutationObserver for main container
+  console.log("Observers restarted.");
+}
+
+
 function observeMainContainer() {
   const mainContainer = document.querySelector('.mainContainer');
 
@@ -563,11 +579,11 @@ function observeMainContainer() {
     return;
   }
 
-  const observer = new MutationObserver(() => {
+  window.mainContainerObserver2 = new MutationObserver(() => {
     toggleUI();
   });
 
-  observer.observe(mainContainer, {
+  window.mainContainerObserver2.observe(mainContainer, {
     childList: true,
     subtree: true,
   });
