@@ -120,7 +120,7 @@ import { saveAs } from 'file-saver';
  
 
     // Update the UI to reflect cleared state
-    updateImageCount();
+    // updateImageCount();
 
     // Reinitialize observers for the new board
     observeListParent();
@@ -314,6 +314,7 @@ function initializeListItemsObserver(listDiv) {
           const imgElement = document.createElement("img");
           imgElement.src = imageUrl;
           imgElement.style.width = "100px";
+          imgElement.classList.add("popup-img")
           imgElement.style.height = "150px";
           imgElement.style.marginRight = "10px";
           imgElement.style.cursor = 'pointer';
@@ -322,7 +323,7 @@ function initializeListItemsObserver(listDiv) {
     
           imageList.appendChild(imgElement);
           imageList.scrollTop = imageList.scrollHeight;
-          updateImageCount(); // Update the image count in the panel
+          // updateImageCount(); // Update the image count in the panel
         }
       });
     }
@@ -450,7 +451,12 @@ function injectPanel() {
 
   // Description text under header
   const description = document.createElement('span');
-  description.textContent = 'Select, export all images from your Pinterest moodboard.';
+  description.innerHTML = `
+    1. Scroll through your board to load all images. <br/>
+    2. Select the images you want to save. <br/>
+    3. Export them as a high-quality ZIP file.
+  `;
+
   description.style.fontSize = '12px';
   description.style.color = '#8d8d8d';
   description.style.display = 'block';
@@ -552,7 +558,7 @@ function injectPanel() {
   imageCount.id = 'image-count';
   imageCount.textContent = `Selected Images Count: 0`;
   imageCount.style.marginBottom = '10px';
-  panelContent.appendChild(imageCount);
+  // panelContent.appendChild(imageCount);
 
   // Create a container for the buttons
   const buttonContainer = document.createElement('div');
@@ -565,7 +571,7 @@ function injectPanel() {
 
   // Fetch Images Button
   const fetchImagesButton = document.createElement('button');
-  fetchImagesButton.textContent = 'Select all images in board';
+  fetchImagesButton.textContent = 'Auto scroll to select all images';
   fetchImagesButton.style.border = '0'; 
   fetchImagesButton.style.borderRadius = '20px'; 
   fetchImagesButton.style.padding = '10px 15px'; 
@@ -701,8 +707,12 @@ style.innerHTML = `
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
- .active {
-    outline: 2px solid #89c687; /* Define the active outline */
+  .popup-img {
+   outline: 2px solid #e7e7e7;
+    outline-offset: 3px;
+  }
+ .popup-img.active {
+    outline: 2px solid #89c687;
   }  
 `;
 document.getElementsByTagName('head')[0].appendChild(style);
@@ -733,7 +743,7 @@ function updatePanel() {
 
 function downloadSelectedImages() {
   const zip = new JSZip();
-  const folder = zip.folder("selected_images");
+  const folder = zip.folder("pinSaver");
   const imagePromises = [];
 
   if (window.selectExportImages.size === 0) {
@@ -768,7 +778,7 @@ function downloadSelectedImages() {
   Promise.all(imagePromises)
     .then(() => {
       zip.generateAsync({ type: "blob" }).then((content) => {
-        saveAs(content, "selected_images.zip");
+        saveAs(content, "pinSaver.zip");
         console.log("Download complete.");
       });
     })
