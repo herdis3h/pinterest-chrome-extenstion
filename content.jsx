@@ -1,7 +1,6 @@
  
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
-console.log("JSZip is available:", typeof JSZip !== 'undefined' ? "Yes" : "No");
 
 (function() {
 
@@ -39,19 +38,21 @@ console.log("JSZip is available:", typeof JSZip !== 'undefined' ? "Yes" : "No");
   function cleanUp() {
     console.log("Cleaning up script...");
   
+    // Remove the panel from the DOM
     const existingPanel = document.getElementById("image-selection-panel");
     if (existingPanel) {
-      existingPanel.style.display = "none";
       existingPanel.remove();
       console.log("Removed image selection panel.");
     }
   
+    // Clear the auto-scroll interval if active
     if (window.scrollInterval) {
       clearInterval(window.scrollInterval);
       window.scrollInterval = null;
       console.log("Cleared scroll interval.");
     }
   
+    // Disconnect and nullify all observers
     if (window.imageObserver) {
       window.imageObserver.disconnect();
       window.imageObserver = null;
@@ -70,16 +71,23 @@ console.log("JSZip is available:", typeof JSZip !== 'undefined' ? "Yes" : "No");
       console.log("Disconnected additional container observer.");
     }
   
+    if (window.bodyObserver) {
+      window.bodyObserver.disconnect();
+      window.bodyObserver = null;
+      console.log("Disconnected body observer.");
+    }
+  
+    // Clear the selected images and related sets
     window.selectedImages.clear();
     window.selectExportImages.clear();
+    window.observedItems.clear();
   
+    // Restore default scrolling behavior
     document.body.style.overflow = "auto";
+  
     console.log("Cleanup complete. Script functions and observers disabled.");
   }
   
-  
-  
-
  
  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log("Received message:", message);
@@ -98,18 +106,18 @@ console.log("JSZip is available:", typeof JSZip !== 'undefined' ? "Yes" : "No");
   }
 
   if (message.action === "pageUpdated") {
-    console.log("pageUpdated UI...");
-      
-    // Clear selected images and observed items
+    // console.log("pageUpdated UI...");
+    
+    // // Clear selected images and observed items
     window.selectedImages.clear();
     window.selectExportImages.clear();
     window.observedItems.clear();
-
+    
     const imageList = document.getElementById('selected-images-list');
     if (imageList) {
-      imageList.innerHTML = ''; // Clear all child elements
-    }
-  
+        imageList.innerHTML = ''; // Clear all child elements
+      }
+ 
 
     // Update the UI to reflect cleared state
     updateImageCount();
@@ -179,67 +187,76 @@ function reinitializeScript() {
 
 
 
-    function observeListItems() {
-      const listDiv = document.querySelector('div[role="list"]');
+function observeListItems() {
+  const listDiv = document.querySelector('div[role="list"]');
 
-      if (!listDiv) {
-        console.warn("No div with role='list' found.");
-        return;
-      }
+  if (!listDiv) {
+    console.warn("No div with role='list' found. Setting up MutationObserver to wait for it.");
 
-        // Disconnect any existing observer before creating a new one
-        if (window.imageObserver) {
-          window.imageObserver.disconnect();
-          console.log("Disconnected existing IntersectionObserver.");
-        }
-        
-        window.observedItems.clear()
-      console.log("Setting up IntersectionObserver for list items...",  window.imageObserver );
+    // Set up MutationObserver to watch for `div[role="list"]`
+    const observer = new MutationObserver((mutations) => {
+      console.log("DOM Mutation detected:", mutations);
 
-      // IntersectionObserver for visibility tracking of list items
-      window.imageObserver = new IntersectionObserver((entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            const listItem = entry.target;
-            console.log("listItem", listItem, window.observedItems)
-            if (listItem.getAttribute("role") === "listitem" && !window.observedItems.has(listItem)) {
-              console.log("List item became visible:", listItem);
-              window.observedItems.add(listItem); // Mark as observed
-              fetchImagesFromListItem(listItem); // Process images in the visible list item
-            }
+      mutations.forEach((mutation) => {
+        mutation.addedNodes.forEach((node) => {
+          console.log("Added node detected:", node);
+          if (
+            node.nodeType === Node.ELEMENT_NODE &&
+            node.getAttribute("role") === "list"
+          ) {
+            console.log("Found 'div[role=list]' via MutationObserver:", node);
+            observer.disconnect(); // Stop observing once found
+            initializeListItemsObserver(node); // Start observing the list items
           }
         });
-      },  { root: listDiv, threshold: 0.1 }
-    );
-
-      // Observe all existing children with role="listitem"
-      listDiv.querySelectorAll('[role="listitem"]').forEach((listItem) => {
-        window.imageObserver.observe(listItem);
       });
-      console.log("Setting up IntersectionObserver for list items...",  window.imageObserver );
-      // Set up a MutationObserver to detect new children added dynamically
-      window.mainContainerObserver = new MutationObserver((mutations) => {
-        mutations.forEach((mutation) => {
-          mutation.addedNodes.forEach((node) => {
-            if (
-              node.nodeType === Node.ELEMENT_NODE &&
-              node.getAttribute("role") === "listitem"
-            ) {
-              console.log("New list item detected:", node);
-              window.imageObserver.observe(node); // Observe the new list item
-            }
-          });
-        });
-      });
+    });
 
-      // Observe the parent list for changes in its child nodes
-      mainContainerObserver.observe(listDiv, {
-        childList: true,
-        subtree: true,
-      });
+    // Observe the body for changes
+    observer.observe(document.body, { childList: true, subtree: true });
 
-      console.log("Observers are now active for list items.");
-    }
+    return; // Exit the function as the observer will handle the future detection
+  }
+
+  // If listDiv exists, directly initialize observation
+  initializeListItemsObserver(listDiv);
+}
+
+function initializeListItemsObserver(listDiv) {
+  // Disconnect any existing IntersectionObserver
+  if (window.imageObserver) {
+    console.log("Image observer already exists. Disconnecting it.");
+    window.imageObserver.disconnect();
+  }
+
+  console.log("Setting up IntersectionObserver for list items.");
+
+  // Set up IntersectionObserver to monitor visibility of list items
+  window.imageObserver = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        const listItem = entry.target;
+        if (
+          listItem.getAttribute("role") === "listitem" &&
+          !window.observedItems.has(listItem)
+        ) {
+          console.log("List item became visible:", listItem);
+          window.observedItems.add(listItem); // Mark as observed
+          fetchImagesFromListItem(listItem); // Process the list item
+        }
+      }
+    });
+  }, { root: listDiv, threshold: 0.1 });
+
+  // Start observing all existing list items
+  listDiv.querySelectorAll('[role="listitem"]').forEach((listItem) => {
+    window.imageObserver.observe(listItem);
+  });
+
+  console.log("Observers are now active for list items in:", listDiv);
+}
+
+
 
 
     function updateImageCount() {
@@ -278,6 +295,7 @@ function reinitializeScript() {
           imgElement.style.width = "100px";
           imgElement.style.height = "150px";
           imgElement.style.marginRight = "10px";
+          imgElement.style.cursor = 'pointer';
           imgElement.style.borderRadius = "8px";
           imgElement.style.objectFit = "cover";
     
@@ -348,10 +366,8 @@ async function startFetchingImages() {
      await window.scrollBy({ top: rect.top, behavior: 'smooth' });
     }
   }
-
-  // Now start observing and auto-scrolling
-  // observeImageList();
-  autoScroll();  // Start smooth auto-scroll
+ 
+  autoScroll();   
 }
 
 
@@ -359,24 +375,7 @@ async function startFetchingImages() {
 
 // Handle the Fetch Images button click
 async function fetchImagesButtonClick() {
-  const loader = document.getElementById('loader');
-
-  // Check if loader exists
-  if (loader) {
-    // Show the loader
-    loader.style.display = 'block';
-  } else {
-    console.warn("Loader element not found");
-  }
-
-  await startFetchingImages();  // Start fetching and scrolling
-
-  // Hide the loader once the fetching process is done
-  setTimeout(() => {
-    if (loader) {
-      loader.style.display = 'none';
-    }
-  }, 500);
+  await startFetchingImages(); 
 }
 
 
@@ -405,11 +404,27 @@ function injectPanel() {
   panelContent.style.display = 'flex';
   panelContent.style.flexDirection = 'column';
   panelContent.style.gap = '10px';
+  
+  // Create content container inside the panel
+  const header = document.createElement('div');
+  panelContent.id = 'panel-content';
+  panelContent.style.display = 'flex';
+  panelContent.style.flexDirection = 'column';
+  panelContent.style.gap = '10px';
 
-  const header = document.createElement('h3');
-  header.textContent = 'PinSaver';
-  header.style.paddingBottom = '5px';
-  panelContent.appendChild(header);
+  const title = document.createElement('h3');
+  title.textContent = 'PinSaver';
+  title.style.paddingBottom = '5px';
+  header.appendChild(title);
+
+
+  // Create content container inside the panel
+  const descContent = document.createElement('div');
+  descContent.style.display = 'flex';
+  descContent.style.flexDirection = 'row';
+  descContent.style.alignItems = 'center';
+  descContent.style.gap = '10px';
+  descContent.style.marginBottom = '10px';
 
   // Description text under header
   const description = document.createElement('span');
@@ -417,8 +432,62 @@ function injectPanel() {
   description.style.fontSize = '12px';
   description.style.color = '#8d8d8d';
   description.style.display = 'block';
-  description.style.marginBottom = '10px';
-  panelContent.appendChild(description);
+  description.style.marginRight = 'auto';
+  descContent.appendChild(description);
+
+
+  // Add Select All and Deselect All Buttons
+  const selectAllButton = document.createElement('button');
+  selectAllButton.textContent = 'Select All';
+  selectAllButton.style.border = '0';
+  selectAllButton.style.borderRadius = '20px';
+  selectAllButton.style.padding = '10px 15px';
+  selectAllButton.style.width = 'fit-content';
+  selectAllButton.style.backgroundColor = '#3498db';
+  selectAllButton.style.color = 'white';
+  selectAllButton.onclick = () => {
+    console.log("Selecting all images...");
+  
+    const imgElements = document.querySelectorAll(`#selected-images-list img`);
+    console.log("imgElements", imgElements)
+    if (imgElements) {
+      imgElements.forEach((imgElement) => {
+        const imageUrl = imgElement.src;
+        if (!window.selectExportImages.has(imageUrl)) {
+          // Add to the export set and mark as selected
+          window.selectExportImages.add(imageUrl);
+          imgElement.classList.add("active");
+        }
+      });
+    }
+    console.log("All selected images added to export.", imgElements);
+
+  };
+    
+  const deselectAllButton = document.createElement('button');
+  deselectAllButton.textContent = 'Deselect All';
+  deselectAllButton.style.border = '0';
+  deselectAllButton.style.borderRadius = '20px';
+  deselectAllButton.style.padding = '10px 15px';
+  deselectAllButton.style.width = 'fit-content';
+  deselectAllButton.style.backgroundColor = '#e74c3c';
+  deselectAllButton.style.color = 'white';
+  deselectAllButton.onclick = () => {
+    const images = document.querySelectorAll('#selected-images-list img');
+  
+    if(images.length > 0) {
+
+      images.forEach(img => {
+        img.classList.remove("active")
+      });
+      window.selectExportImages.clear();
+    }
+  };
+
+  descContent.appendChild(selectAllButton);
+  descContent.appendChild(deselectAllButton);
+  header.appendChild(descContent);
+  panelContent.appendChild(header);
 
   const selectedImageList = document.createElement('div');
   selectedImageList.id = 'selected-images-list';
@@ -427,10 +496,10 @@ function injectPanel() {
   selectedImageList.style.flexDirection = 'row';
   selectedImageList.style.flexWrap = 'wrap';
   selectedImageList.style.gap = '1rem';
-  selectedImageList.style.width = '100%';
+  selectedImageList.style.width = 'calc(100% - 35px)';
   selectedImageList.style.whiteSpace = 'nowrap';  // Prevent line breaks
   selectedImageList.style.position = 'relative';  // Display images in a row
-  selectedImageList.style.height = '300px';  // Enable horizontal scrolling
+  selectedImageList.style.height = '320px';  // Enable horizontal scrolling
   selectedImageList.style.overflowX = 'hidden';  // Enable horizontal scrolling
   selectedImageList.style.overflowY = 'auto';  // Enable horizontal scrolling
   selectedImageList.style.border = '1px solid #dbdbdb';  // Prevent line breaks
@@ -478,7 +547,7 @@ function injectPanel() {
   fetchImagesButton.style.border = '0'; 
   fetchImagesButton.style.borderRadius = '20px'; 
   fetchImagesButton.style.padding = '10px 15px'; 
-  fetchImagesButton.style.width = '100%'; 
+  fetchImagesButton.style.width = 'fit-content'; 
   fetchImagesButton.onclick = fetchImagesButtonClick;
   buttonContainer.appendChild(fetchImagesButton);
 
@@ -508,60 +577,10 @@ function injectPanel() {
   downloadButton.onclick = downloadSelectedImages;
 
   const exportIcon = document.createElement('span');
-  exportIcon.innerHTML = `<svg style="height: 16px;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M288 32c0-17.7-14.3-32-32-32s-32 14.3-32 32l0 242.7-73.4-73.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l128 128c12.5 12.5 32.8 12.5 45.3 0l128-128c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L288 274.7 288 32zM64 352c-35.3 0-64 28.7-64 64l0 32c0 35.3 28.7 64 64 64l384 0c35.3 0 64-28.7 64-64l0-32c0-35.3-28.7-64-64-64l-101.5 0-45.3 45.3c-25 25-65.5 25-90.5 0L165.5 352 64 352zm368 56a24 24 0 1 1 0 48 24 24 0 1 1 0-48z"/></svg>`;
-
-  // Add Select All and Deselect All Buttons
-  const selectAllButton = document.createElement('button');
-  selectAllButton.textContent = 'Select All';
-  selectAllButton.style.border = '0';
-  selectAllButton.style.borderRadius = '20px';
-  selectAllButton.style.padding = '10px 15px';
-  selectAllButton.style.width = '100%';
-  selectAllButton.style.backgroundColor = '#3498db';
-  selectAllButton.style.color = 'white';
-  selectAllButton.onclick = () => {
-    console.log("Selecting all images...");
- 
-    const imgElements = document.querySelectorAll(`#selected-images-list img`);
-    console.log("imgElements", imgElements)
-    if (imgElements) {
-      imgElements.forEach((imgElement) => {
-        const imageUrl = imgElement.src;
-        if (!window.selectExportImages.has(imageUrl)) {
-          // Add to the export set and mark as selected
-          window.selectExportImages.add(imageUrl);
-          imgElement.classList.add("active");
-        }
-      });
-    }
-    console.log("All selected images added to export.", imgElements);
-
-  };
-  
-
-  const deselectAllButton = document.createElement('button');
-  deselectAllButton.textContent = 'Deselect All';
-  deselectAllButton.style.border = '0';
-  deselectAllButton.style.borderRadius = '20px';
-  deselectAllButton.style.padding = '10px 15px';
-  deselectAllButton.style.width = '100%';
-  deselectAllButton.style.backgroundColor = '#e74c3c';
-  deselectAllButton.style.color = 'white';
-  deselectAllButton.onclick = () => {
-    const images = document.querySelectorAll('#selected-images-list img');
- 
-    if(images.length > 0) {
-
-      images.forEach(img => {
-        img.classList.remove("active")
-      });
-      window.selectExportImages.clear();
-    }
-    // updateImageCount();
-  };
-
-  buttonContainer.appendChild(selectAllButton);
-  buttonContainer.appendChild(deselectAllButton);
+  exportIcon.innerHTML = `
+    Download as .zip
+    <svg style="height: 16px;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M288 32c0-17.7-14.3-32-32-32s-32 14.3-32 32l0 242.7-73.4-73.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l128 128c12.5 12.5 32.8 12.5 45.3 0l128-128c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L288 274.7 288 32zM64 352c-35.3 0-64 28.7-64 64l0 32c0 35.3 28.7 64 64 64l384 0c35.3 0 64-28.7 64-64l0-32c0-35.3-28.7-64-64-64l-101.5 0-45.3 45.3c-25 25-65.5 25-90.5 0L165.5 352 64 352zm368 56a24 24 0 1 1 0 48 24 24 0 1 1 0-48z"/></svg>
+  `;
   
   panel.appendChild(panelContent);
   // Error message
@@ -594,10 +613,10 @@ function toggleUI() {
   // profile-pins-grid
   const profilePinsGrid = document.querySelector('[data-test-id="board-feed"], [data-test-id="profile-pins-grid"]');
   const panelContent = document.getElementById("panel-content")
-  console.log("panelContent", panelContent)
+  // console.log("panelContent", panelContent)
   const errorMessage = document.getElementById("error-message")
-  console.log("errorMessage", errorMessage)
-  console.log("profilePinsGrid", profilePinsGrid)
+  // console.log("errorMessage", errorMessage)
+  // console.log("profilePinsGrid", profilePinsGrid)
   if (profilePinsGrid) {
     panelContent.style.display = 'block'; // Show the panel
     errorMessage.style.display = 'none'; // Hide the error message
@@ -649,7 +668,7 @@ style.innerHTML = `
   100% { transform: rotate(360deg); }
 }
  .active {
-    outline: 2px solid red; /* Define the active outline */
+    outline: 2px solid #89c687; /* Define the active outline */
   }  
 `;
 document.getElementsByTagName('head')[0].appendChild(style);
@@ -667,6 +686,7 @@ function updatePanel() {
     img.src = src;
     img.style.width = '100px';
     img.style.height = '150px';
+    img.style.cursor = 'pointer';
     img.style.marginRight = '10px';
     img.classList.add("pin-image");
     img.setAttribute("class", "pin-image");
