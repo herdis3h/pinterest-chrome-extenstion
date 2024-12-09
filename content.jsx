@@ -8,6 +8,7 @@ console.log("JSZip is available:", typeof JSZip !== 'undefined' ? "Yes" : "No");
   window.selectedImages = new Set();
   window.observedItems = new Set();
   window.selectExportImages = new Set(); 
+  window.bodyObserver;
  
   function reinitializeScript() {
     console.log("Reinitializing script...");
@@ -98,12 +99,53 @@ console.log("JSZip is available:", typeof JSZip !== 'undefined' ? "Yes" : "No");
 
   if (message.action === "pageUpdated") {
     console.log("pageUpdated UI...");
-    toggleUI()
- 
+      
+    // Clear selected images and observed items
+    window.selectedImages.clear();
+    window.selectExportImages.clear();
+    window.observedItems.clear();
+
+    const imageList = document.getElementById('selected-images-list');
+    if (imageList) {
+      imageList.innerHTML = ''; // Clear all child elements
+    }
+  
+
+    // Update the UI to reflect cleared state
+    updateImageCount();
+
+    // Reinitialize observers for the new board
+    observeListParent();
+
+    // Toggle UI to check if the user is in a valid board
+    toggleUI();
 
     sendResponse({ status: "Script pageUpdated" });
   }
 });
+
+function observeListParent() {
+  window.bodyObserver = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      mutation.addedNodes.forEach((node) => {
+        if (
+          node.nodeType === Node.ELEMENT_NODE &&
+          node.getAttribute("role") === "list"
+        ) {
+          console.log("New 'role=list' element detected:", node);
+          observeListItems(); // Start observing list items
+          window.bodyObserver.disconnect(); // Stop observing once the 'list' is found
+        }
+      });
+    });
+  });
+
+  // Observe the entire body for changes to find role='list'
+  window.bodyObserver.observe(document.body, { childList: true, subtree: true });
+
+  console.log("Started observing for 'role=list' elements in the DOM.");
+}
+
 
 function reinitializeScript() {
   console.log("Reinitializing script...");
@@ -348,7 +390,7 @@ function injectPanel() {
   panel.style.top = '50px';
   panel.style.right = '1rem';
   panel.style.width = '650px';
-  panel.style.boxShadow = 'rgba(14, 63, 126, 0.06) 0px 0px 0px 1px, rgba(42, 51, 70, 0.03) 0px 1px 1px -0.5px, rgba(42, 51, 70, 0.04) 0px 2px 2px -1px, rgba(42, 51, 70, 0.04) 0px 3px 3px -1.5px, rgba(42, 51, 70, 0.03) 0px 5px 5px -2.5px, rgba(42, 51, 70, 0.03) 0px 10px 10px -5px, rgba(42, 51, 70, 0.03) 0px 24px 24px -8px;';
+  panel.style.boxShadow = '0px 4px 6px rgba(0, 0, 0, 0.1), 0px 1px 3px rgba(0, 0, 0, 0.06)';
   panel.style.overflowY = 'auto';
   panel.style.overflowX = 'hidden';
   panel.style.background = 'white';
