@@ -1,93 +1,138 @@
+ 
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
+console.log("JSZip is available:", typeof JSZip !== 'undefined' ? "Yes" : "No");
 
 (function() {
-    // Prevent multiple script injections
-    if (window.imageSelectionScriptActive) {
-      
-      console.log("Script is already active. Cleaning up...");
-      const existingPanel = document.getElementById("image-selection-panel");
-      if (existingPanel) existingPanel.remove();
-  
-      if (window.scrollInterval) clearInterval(window.scrollInterval);
-      if (window.imageObserver) window.imageObserver.disconnect();
-  
-      document.body.style.overflow = "";
-      delete window.selectedImages;
-      delete window.scrollInterval;
-      delete window.imageObserver;
-      delete window.imageSelectionScriptActive;
+ 
+  function reinitializeScript() {
+    console.log("Reinitializing script...");
 
-      const scriptTags = document.querySelectorAll('script[src*="content.js"]'); // Replace with your actual script URL
-      scriptTags.forEach((scriptTag) => {
-        scriptTag.parentNode.removeChild(scriptTag);
-        console.log("Script tag removed.");
-      });
-  
-      return;
+    // Make the panel visible again
+    const existingPanel = document.getElementById("image-selection-panel");
+    if (existingPanel) {
+      existingPanel.style.display = "block";
+      console.log("Restored visibility of image selection panel.");
     }
 
-  function isPinterestBoard() {
-    const url = new URL(window.location.href);
-    const pathSegments = url.pathname.split("/").filter(Boolean);
-    return pathSegments.length === 2; // A board URL has exactly 2 path segments after the domain
-  }
+    // Restore the body's overflow property
+    document.body.style.overflow = "hidden";
 
-  function showMessage(message) {
-    const panel = document.createElement("div");
-    panel.id = "image-selection-panel";
-    panel.style.position = "fixed";
-    panel.style.top = "50px";
-    panel.style.right = "0";
-    panel.style.width = "600px";
-    panel.style.height = "700px";
-    panel.style.background = "white";
-    panel.style.border = "none";
-    panel.style.borderRadius = "20px";
-    panel.style.padding = "15px";
-    panel.style.zIndex = "10000";
+    // Reinitialize selected images if not already present
+    if (!window.selectedImages) {
+      window.selectedImages = new Set();
+      console.log("Reinitialized selected images set.");
+    }
 
-    const messageElement = document.createElement("p");
-    messageElement.textContent = message;
-    messageElement.style.color = "#d9534f"; // Red text for error
-    messageElement.style.textAlign = "center";
-
-    panel.appendChild(messageElement);
-    document.body.appendChild(panel);
-  }
-
-  function setupUI() {
-    // Call this function to inject your UI when on a board
-    injectPanel();
-    observeListItems(); // Start observing the board
-  }
-
-   /**
-   * Clean up the script if it's already active.
-   */
-   function cleanUp() {
-    const existingPanel = document.getElementById("image-selection-panel");
-    if (existingPanel) existingPanel.remove();
-
-    if (window.scrollInterval) clearInterval(window.scrollInterval);
-    if (window.imageObserver) window.imageObserver.disconnect();
-
-    document.body.style.overflow = "";
-    delete window.selectedImages;
-    delete window.scrollInterval;
-    delete window.imageObserver;
-    delete window.imageSelectionScriptActive;
-
-    console.log("Content script removed.");
+    // Restart the observer
+    if (!window.imageObserver) {
+      observeListItems();
+      console.log("Reinitialized image observer.");
+    }
+ 
+    console.log("Script reinitialization complete.");
   }
  
-   // If the script is already active, destroy it.
-   if (window.imageSelectionScriptActive) {
+  function cleanUp() {
+    console.log("Cleaning up script...");
+  
+    // Hide the injected panel if it exists
+    const existingPanel = document.getElementById("image-selection-panel");
+    if (existingPanel) {
+      existingPanel.style.display = "none";
+      console.log("Hid image selection panel.");
+    }
+  
+    // Clear any global intervals
+    if (window.scrollInterval) {
+      clearInterval(window.scrollInterval);
+      window.scrollInterval = null;
+      console.log("Cleared scroll interval.");
+    }
+  
+    // Disconnect any active observers
+    if (window.imageObserver) {
+      window.imageObserver.disconnect();
+      window.imageObserver = null;
+      console.log("Disconnected image observer.");
+    }
+  
+    // Clear the selected images without removing the reference
+    if (window.selectedImages) {
+      window.selectedImages.clear();
+      console.log("Cleared selected images.");
+    }
+  
+    // Restore the body's overflow property
+    document.body.style.overflow = "auto";
+  
+    console.log("Cleanup complete. Script remains active but UI and observers are cleared.");
+  }
+  
+  
+
+ 
+ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  console.log("Received message:", message);
+
+  if (message.action === "RemoveScript") {
+    console.log("RemoveScript message received. Cleaning up UI and observers...");
     cleanUp();
-    return;
+    sendResponse({ status: "Script cleaned up, UI hidden" });
   }
 
-    window.imageSelectionScriptActive = true;
+  if (message.action === "AddScript") {
+    console.log("AddScript message received. Reinitializing UI...");
+    reinitializeScript()
+
+    sendResponse({ status: "Script reinitialized" });
+  }
+
+  if (message.action === "pageUpdated") {
+    console.log("pageUpdated UI...");
+    // toggleUI()
+
+    document.addEventListener('DOMContentLoaded', () => {
+  console.log('askdjlkas')
+    });
+
+    sendResponse({ status: "Script pageUpdated" });
+  }
+});
+
+function reinitializeScript() {
+  console.log("Reinitializing script...");
+
+  // Make the panel visible again
+  const existingPanel = document.getElementById("image-selection-panel");
+  if (existingPanel) {
+    existingPanel.style.display = "block";
+    console.log("Restored visibility of image selection panel.");
+  } else {
+    // If panel doesn't exist, inject it again
+    injectPanel();
+  }
+
+  // Restore the body's overflow property
+  document.body.style.overflow = "hidden";
+
+  // Reinitialize selected images if not already present
+  if (!window.selectedImages) {
+    window.selectedImages = new Set();
+    console.log("Reinitialized selected images set.");
+  }
+
+  // Restart the observer
+  if (!window.imageObserver) {
+    observeListItems();
+    console.log("Reinitialized image observer.");
+  }
+ 
+
+  console.log("Script reinitialization complete.");
+}
+
+
     window.selectedImages = new Set();
     const observedItems = new Set();
 
@@ -151,24 +196,40 @@ import { saveAs } from 'file-saver';
       const imageCount = document.getElementById("image-count");
       imageCount.textContent = `Selected Images Count: ${window.selectedImages.size}`;
     }
+    
     function fetchImagesFromListItem(listItem) {
       const images = listItem.querySelectorAll("img");
       const imageList = document.getElementById("selected-images-list");
-
+    
       images.forEach((img) => {
-        if (img.src && !window.selectedImages.has(img.src)) {
-          console.log("Image found:", img.src);
-          window.selectedImages.add(img.src); // Add to selected images
-
-          // Create and append the image element to the imageList
+        let imageUrl = img.src;
+    
+        // Use srcset to retrieve the highest quality image (4x if available)
+        if (img.srcset) {
+          const srcset = img.srcset.split(",");
+          const highQualitySrc = srcset
+            .map((src) => src.trim())
+            .reverse() // Start from the highest quality
+            .find((src) => src.includes("4x")) || srcset[srcset.length - 1];
+          
+          if (highQualitySrc) {
+            imageUrl = highQualitySrc.split(" ")[0]; // Extract the URL part
+          }
+        }
+    
+        if (!window.selectedImages.has(imageUrl)) {
+          console.log("High-quality image found:", imageUrl);
+          window.selectedImages.add(imageUrl); // Add to selected images
+    
+          // Create and append the image element to the image list in the panel
           const imgElement = document.createElement("img");
-          imgElement.src = img.src;
+          imgElement.src = imageUrl;
           imgElement.style.width = "100px";
           imgElement.style.height = "150px";
           imgElement.style.marginRight = "10px";
           imgElement.style.borderRadius = "8px";
           imgElement.style.objectFit = "cover";
-
+    
           imageList.appendChild(imgElement);
           updateImageCount(); // Update the image count in the panel
         }
@@ -243,6 +304,8 @@ async function startFetchingImages() {
 }
 
 
+
+
 // Handle the Fetch Images button click
 async function fetchImagesButtonClick() {
   const loader = document.getElementById('loader');
@@ -283,10 +346,17 @@ function injectPanel() {
   panel.style.padding = '15px';
   panel.style.zIndex = '10000';
 
+  // Create content container inside the panel
+  const panelContent = document.createElement('div');
+  panelContent.id = 'panel-content';
+  panelContent.style.display = 'flex';
+  panelContent.style.flexDirection = 'column';
+  panelContent.style.gap = '10px';
+
   const header = document.createElement('h3');
   header.textContent = 'PinSaver';
   header.style.paddingBottom = '5px';
-  panel.appendChild(header);
+  panelContent.appendChild(header);
 
   // Description text under header
   const description = document.createElement('span');
@@ -295,7 +365,7 @@ function injectPanel() {
   description.style.color = '#8d8d8d';
   description.style.display = 'block';
   description.style.marginBottom = '10px';
-  panel.appendChild(description);
+  panelContent.appendChild(description);
 
   const selectedImageList = document.createElement('div');
   selectedImageList.id = 'selected-images-list';
@@ -311,7 +381,7 @@ function injectPanel() {
   selectedImageList.style.background = '#f5f5f5';  // Prevent line breaks
   selectedImageList.style.marginBottom = '10px';  // Prevent line breaks
 
-  panel.appendChild(selectedImageList);
+  panelContent.appendChild(selectedImageList);
 
   // Loader element
   const loader = document.createElement('div');
@@ -333,7 +403,7 @@ function injectPanel() {
   imageCount.id = 'image-count';
   imageCount.textContent = `Selected Images Count: 0`;
   imageCount.style.marginBottom = '10px';
-  panel.appendChild(imageCount);
+  panelContent.appendChild(imageCount);
 
   // Create a container for the buttons
   const buttonContainer = document.createElement('div');
@@ -341,7 +411,7 @@ function injectPanel() {
   buttonContainer.style.flexDirection = 'column';
   buttonContainer.style.gap = '10px';  // Add spacing between the buttons
   buttonContainer.style.marginTop = '10px';
-  panel.appendChild(buttonContainer);
+  panelContent.appendChild(buttonContainer);
   
 
   // Fetch Images Button
@@ -381,16 +451,75 @@ function injectPanel() {
 
   const exportIcon = document.createElement('span');
   exportIcon.innerHTML = `<svg style="height: 16px;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M288 32c0-17.7-14.3-32-32-32s-32 14.3-32 32l0 242.7-73.4-73.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l128 128c12.5 12.5 32.8 12.5 45.3 0l128-128c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L288 274.7 288 32zM64 352c-35.3 0-64 28.7-64 64l0 32c0 35.3 28.7 64 64 64l384 0c35.3 0 64-28.7 64-64l0-32c0-35.3-28.7-64-64-64l-101.5 0-45.3 45.3c-25 25-65.5 25-90.5 0L165.5 352 64 352zm368 56a24 24 0 1 1 0 48 24 24 0 1 1 0-48z"/></svg>`;
-
+  
+  panel.appendChild(panelContent);
+  // Error message
+  const errorMessage = document.createElement('div');
+  errorMessage.id = 'error-message';
+  errorMessage.textContent = 'Sorry, you need to be within a board.';
+  errorMessage.style.top = '20px';
+  errorMessage.style.right = '20px';
+  errorMessage.style.padding = '10px';
+  errorMessage.style.backgroundColor = 'red';
+  errorMessage.style.color = 'white';
+  errorMessage.style.zIndex = '10000';
+  errorMessage.style.borderRadius = '5px';
+  // errorMessage.style.display = 'none'; 
+  panel.appendChild(errorMessage);
+  
   // Append the icon and text to the download button
   downloadButton.appendChild(exportIcon);
   actionButtonsContainer.appendChild(downloadButton);
-
+  
   // Append the nested div to the main button container
   buttonContainer.appendChild(actionButtonsContainer);
-
+  
   document.body.appendChild(panel);
+
+  toggleUI();
+  observeMainContainer();
 }
+
+function toggleUI() {
+  const profilePinsGrid = document.querySelector('[data-test-id="profile-pins-grid"]');
+  const panelContent = document.getElementById("panel-content")
+  console.log("panelContent", panelContent)
+  const errorMessage = document.getElementById("error-message")
+  console.log("errorMessage", errorMessage)
+  console.log("profilePinsGrid", profilePinsGrid)
+  if (profilePinsGrid) {
+    panelContent.style.display = 'block'; // Show the panel
+    errorMessage.style.display = 'none'; // Hide the error message
+  } else {
+    panelContent.style.display = 'none'; // Hide the panel
+    errorMessage.style.display = 'block'; // Show the error message
+  }
+}
+
+function observeMainContainer() {
+  const mainContainer = document.querySelector('.mainContainer');
+
+  if (!mainContainer) {
+    console.warn("Main container not found. Retrying...");
+    setTimeout(observeMainContainer, 1000);
+    return;
+  }
+
+  const observer = new MutationObserver(() => {
+    toggleUI();
+  });
+
+  observer.observe(mainContainer, {
+    childList: true,
+    subtree: true,
+  });
+
+  console.log("Started observing mainContainer for changes.");
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  injectPanel();
+});
 
 // Add a keyframe animation for the loader's spin effect
 const style = document.createElement('style');

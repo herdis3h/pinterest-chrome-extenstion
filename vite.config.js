@@ -1,39 +1,43 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
+import inject from '@rollup/plugin-inject';
 
 export default defineConfig({
+ 
   plugins: [
     viteStaticCopy({
       targets: [
-        { src: 'manifest.json', dest: '' }, // Copies manifest.json to dist
+        { src: 'manifest.json', dest: '' },
       ],
     }),
   ],
   build: {
     rollupOptions: {
+      // plugins: [
+      //   inject({
+      //     JSZip: 'jszip',
+      //     saveAs: ['file-saver', 'saveAs'],
+      //   }),
+      // ],
       input: {
-        'service-worker': resolve(__dirname, 'service-worker.jsx'), // Background service worker
-        'content': resolve(__dirname, 'content.js'), // Content script
+        'service-worker': resolve(__dirname, 'service-worker.jsx'),
+        'content': resolve(__dirname, 'content.jsx'),
       },
       output: {
         entryFileNames: '[name].js',
         chunkFileNames: '[name].js',
         assetFileNames: '[name].[ext]',
       },
-      external: [
-        'puppeteer', // Mark puppeteer as external
-        'url',       // Exclude Node.js modules
-        'http',
-        'https',
-      ],
     },
     outDir: 'dist',
-    target: 'esnext', 
+    target: 'esnext',
     emptyOutDir: true,
     esbuild: {
-      jsxInject: `import JSZip from 'jszip'`, // Optional: if React JSX is used
-      
-    },     
+      jsxInject: `
+        import JSZip from 'jszip';
+        import { saveAs } from 'file-saver';
+      `,
+    },
   },
 });
