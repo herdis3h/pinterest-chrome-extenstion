@@ -437,16 +437,21 @@ function injectPanel() {
   descContent.style.gap = '10px';
   descContent.style.marginBottom = '10px';
 
+  const disa = document.createElement('span');
+  disa.textContent = 'or scroll';
+  disa.style.width = 'fit-content'; 
+  descContent.appendChild(disa);
 
   // Fetch Images Button
   const fetchImagesButton = document.createElement('button');
-  fetchImagesButton.textContent = 'Auto scroll to select all images';
+  fetchImagesButton.textContent = 'Auto scroll';
   fetchImagesButton.style.border = '0'; 
   fetchImagesButton.style.borderRadius = '20px'; 
   fetchImagesButton.style.padding = '10px 15px'; 
   fetchImagesButton.style.width = 'fit-content'; 
   fetchImagesButton.onclick = fetchImagesButtonClick;
   descContent.appendChild(fetchImagesButton);
+
 
   // Description text under header
   const description = document.createElement('span');
