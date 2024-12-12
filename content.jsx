@@ -276,57 +276,49 @@ function initializeListItemsObserver(listDiv) {
 
   console.log("Observers are now active for list items in:", listDiv);
 }
+ 
+function fetchImagesFromListItem(listItem) {
+  console.log("fetchImagesFromListItemfetchImagesFromListItem", listItem)
+  const images = listItem.querySelectorAll("img");
+  const imageList = document.getElementById("selected-images-list");
 
+  images.forEach((img) => {
+    let imageUrl = img.src;
 
-
-
-    function updateImageCount() {
-      const imageCount = document.getElementById("image-count");
-      imageCount.textContent = `Selected Images Count: ${window.selectedImages.size}`;
+    // Use srcset to retrieve the highest quality image (4x if available)
+    if (img.srcset) {
+      const srcset = img.srcset.split(",");
+      const highQualitySrc = srcset
+        .map((src) => src.trim())
+        .reverse() // Start from the highest quality
+        .find((src) => src.includes("4x")) || srcset[srcset.length - 1];
+      
+      if (highQualitySrc) {
+        imageUrl = highQualitySrc.split(" ")[0]; // Extract the URL part
+      }
     }
 
-    function fetchImagesFromListItem(listItem) {
-      console.log("fetchImagesFromListItemfetchImagesFromListItem", listItem)
-      const images = listItem.querySelectorAll("img");
-      const imageList = document.getElementById("selected-images-list");
-    
-      images.forEach((img) => {
-        let imageUrl = img.src;
-    
-        // Use srcset to retrieve the highest quality image (4x if available)
-        if (img.srcset) {
-          const srcset = img.srcset.split(",");
-          const highQualitySrc = srcset
-            .map((src) => src.trim())
-            .reverse() // Start from the highest quality
-            .find((src) => src.includes("4x")) || srcset[srcset.length - 1];
-          
-          if (highQualitySrc) {
-            imageUrl = highQualitySrc.split(" ")[0]; // Extract the URL part
-          }
-        }
-    
-        if (!window.selectedImages.has(imageUrl)) {
-          console.log("High-quality image found:", imageUrl);
-          window.selectedImages.add(imageUrl); // Add to selected images
-    
-          // Create and append the image element to the image list in the panel
-          const imgElement = document.createElement("img");
-          imgElement.src = imageUrl;
-          imgElement.style.width = "100px";
-          imgElement.classList.add("popup-img")
-          imgElement.style.height = "150px";
-          imgElement.style.marginRight = "10px";
-          imgElement.style.cursor = 'pointer';
-          imgElement.style.borderRadius = "8px";
-          imgElement.style.objectFit = "cover";
-    
-          imageList.appendChild(imgElement);
-          imageList.scrollTop = imageList.scrollHeight;
-          // updateImageCount(); // Update the image count in the panel
-        }
-      });
+    if (!window.selectedImages.has(imageUrl)) {
+      console.log("High-quality image found:", imageUrl);
+      window.selectedImages.add(imageUrl); // Add to selected images
+
+      // Create and append the image element to the image list in the panel
+      const imgElement = document.createElement("img");
+      imgElement.src = imageUrl;
+      imgElement.style.width = "100px";
+      imgElement.classList.add("popup-img")
+      imgElement.style.height = "150px";
+      imgElement.style.marginRight = "10px";
+      imgElement.style.cursor = 'pointer';
+      imgElement.style.borderRadius = "8px";
+      imgElement.style.objectFit = "cover";
+
+      imageList.appendChild(imgElement);
+      imageList.scrollTop = imageList.scrollHeight;
+      // updateImageCount(); // Update the image count in the panel
     }
+  });
+}
 
     // Start observing
     observeListItems();
@@ -394,15 +386,10 @@ async function startFetchingImages() {
 }
 
 
-
-
 // Handle the Fetch Images button click
 async function fetchImagesButtonClick() {
   await startFetchingImages(); 
 }
-
-
-
 
 function injectPanel() {
 
@@ -444,10 +431,22 @@ function injectPanel() {
   // Create content container inside the panel
   const descContent = document.createElement('div');
   descContent.style.display = 'flex';
-  descContent.style.flexDirection = 'row';
+  descContent.style.flexDirection = 'row-reverse';
   descContent.style.alignItems = 'center';
+  descContent.style.justifyContent = 'flex-end';
   descContent.style.gap = '10px';
   descContent.style.marginBottom = '10px';
+
+
+  // Fetch Images Button
+  const fetchImagesButton = document.createElement('button');
+  fetchImagesButton.textContent = 'Auto scroll to select all images';
+  fetchImagesButton.style.border = '0'; 
+  fetchImagesButton.style.borderRadius = '20px'; 
+  fetchImagesButton.style.padding = '10px 15px'; 
+  fetchImagesButton.style.width = 'fit-content'; 
+  fetchImagesButton.onclick = fetchImagesButtonClick;
+  descContent.appendChild(fetchImagesButton);
 
   // Description text under header
   const description = document.createElement('span');
@@ -460,60 +459,9 @@ function injectPanel() {
   description.style.fontSize = '12px';
   description.style.color = '#8d8d8d';
   description.style.display = 'block';
-  description.style.marginRight = 'auto';
+
   descContent.appendChild(description);
 
-
-  // Add Select All and Deselect All Buttons
-  const selectAllButton = document.createElement('button');
-  selectAllButton.textContent = 'Select All';
-  selectAllButton.style.border = '0';
-  selectAllButton.style.borderRadius = '20px';
-  selectAllButton.style.padding = '10px 15px';
-  selectAllButton.style.width = 'fit-content';
-  selectAllButton.style.backgroundColor = '#3498db';
-  selectAllButton.style.color = 'white';
-  selectAllButton.onclick = () => {
-    console.log("Selecting all images...");
-  
-    const imgElements = document.querySelectorAll(`#selected-images-list img`);
-    console.log("imgElements", imgElements)
-    if (imgElements) {
-      imgElements.forEach((imgElement) => {
-        const imageUrl = imgElement.src;
-        if (!window.selectExportImages.has(imageUrl)) {
-          // Add to the export set and mark as selected
-          window.selectExportImages.add(imageUrl);
-          imgElement.classList.add("active");
-        }
-      });
-    }
-    console.log("All selected images added to export.", imgElements);
-
-  };
-    
-  const deselectAllButton = document.createElement('button');
-  deselectAllButton.textContent = 'Deselect All';
-  deselectAllButton.style.border = '0';
-  deselectAllButton.style.borderRadius = '20px';
-  deselectAllButton.style.padding = '10px 15px';
-  deselectAllButton.style.width = 'fit-content';
-  deselectAllButton.style.backgroundColor = '#e74c3c';
-  deselectAllButton.style.color = 'white';
-  deselectAllButton.onclick = () => {
-    const images = document.querySelectorAll('#selected-images-list img');
-  
-    if(images.length > 0) {
-
-      images.forEach(img => {
-        img.classList.remove("active")
-      });
-      window.selectExportImages.clear();
-    }
-  };
-
-  descContent.appendChild(selectAllButton);
-  descContent.appendChild(deselectAllButton);
   header.appendChild(descContent);
   panelContent.appendChild(header);
 
@@ -569,15 +517,64 @@ function injectPanel() {
   panelContent.appendChild(buttonContainer);
   
 
-  // Fetch Images Button
-  const fetchImagesButton = document.createElement('button');
-  fetchImagesButton.textContent = 'Auto scroll to select all images';
-  fetchImagesButton.style.border = '0'; 
-  fetchImagesButton.style.borderRadius = '20px'; 
-  fetchImagesButton.style.padding = '10px 15px'; 
-  fetchImagesButton.style.width = 'fit-content'; 
-  fetchImagesButton.onclick = fetchImagesButtonClick;
-  buttonContainer.appendChild(fetchImagesButton);
+    // Create a container for the buttons
+    const selectContainer = document.createElement('div');
+    selectContainer.style.display = 'flex';
+    selectContainer.style.flexDirection = 'row';
+    selectContainer.style.gap = '10px';  // Add spacing between the buttons
+    selectContainer.style.marginTop = '10px';
+
+    // Add Select All and Deselect All Buttons
+    const selectAllButton = document.createElement('button');
+    selectAllButton.textContent = 'Select All';
+    selectAllButton.style.border = '0';
+    selectAllButton.style.borderRadius = '20px';
+    selectAllButton.style.padding = '10px 15px';
+    selectAllButton.style.width = 'fit-content';
+    selectAllButton.style.backgroundColor = '#3498db';
+    selectAllButton.style.color = 'white';
+    selectAllButton.onclick = () => {
+      console.log("Selecting all images...");
+    
+      const imgElements = document.querySelectorAll(`#selected-images-list img`);
+      console.log("imgElements", imgElements)
+      if (imgElements) {
+        imgElements.forEach((imgElement) => {
+          const imageUrl = imgElement.src;
+          if (!window.selectExportImages.has(imageUrl)) {
+            // Add to the export set and mark as selected
+            window.selectExportImages.add(imageUrl);
+            imgElement.classList.add("active");
+          }
+        });
+      }
+      console.log("All selected images added to export.", imgElements);
+  
+    };
+      
+    const deselectAllButton = document.createElement('button');
+    deselectAllButton.textContent = 'Deselect All';
+    deselectAllButton.style.border = '0';
+    deselectAllButton.style.borderRadius = '20px';
+    deselectAllButton.style.padding = '10px 15px';
+    deselectAllButton.style.width = 'fit-content';
+    deselectAllButton.style.backgroundColor = '#e74c3c';
+    deselectAllButton.style.color = 'white';
+    deselectAllButton.onclick = () => {
+      const images = document.querySelectorAll('#selected-images-list img');
+    
+      if(images.length > 0) {
+  
+        images.forEach(img => {
+          img.classList.remove("active")
+        });
+        window.selectExportImages.clear();
+      }
+    };
+  
+    selectContainer.appendChild(selectAllButton);
+    selectContainer.appendChild(deselectAllButton);
+    buttonContainer.appendChild(selectContainer);
 
   // Create a nested div for "Remove all images" and "Download" buttons
   const actionButtonsContainer = document.createElement('div');
@@ -585,16 +582,7 @@ function injectPanel() {
   actionButtonsContainer.style.flexDirection = 'row-reverse';
   actionButtonsContainer.style.gap = '10px';
   actionButtonsContainer.style.justifyContent = 'flex-end';
-
-  // Clear Images Button
-  const clearButton = document.createElement('button');
-  clearButton.textContent = 'Reset';
-  clearButton.style.border = '0'; 
-  clearButton.style.borderRadius = '20px'; 
-  clearButton.style.padding = '10px 15px'; 
-  clearButton.style.width = 'fit-content'; 
-  clearButton.onclick = clearSelectedImages;
-  // actionButtonsContainer.appendChild(clearButton);
+ 
 
   // Download Button with Icon
   const downloadButton = document.createElement('button');
@@ -606,9 +594,11 @@ function injectPanel() {
   downloadButton.onclick = downloadSelectedImages;
 
   const exportIcon = document.createElement('span');
+  exportIcon.style.display = 'flex';
+  exportIcon.style.alignItems = 'center';
   exportIcon.innerHTML = `
     Download as .zip
-    <svg style="height: 16px;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M288 32c0-17.7-14.3-32-32-32s-32 14.3-32 32l0 242.7-73.4-73.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l128 128c12.5 12.5 32.8 12.5 45.3 0l128-128c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L288 274.7 288 32zM64 352c-35.3 0-64 28.7-64 64l0 32c0 35.3 28.7 64 64 64l384 0c35.3 0 64-28.7 64-64l0-32c0-35.3-28.7-64-64-64l-101.5 0-45.3 45.3c-25 25-65.5 25-90.5 0L165.5 352 64 352zm368 56a24 24 0 1 1 0 48 24 24 0 1 1 0-48z"/></svg>
+    <svg style="height: 16px; margin-left: 5px;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M288 32c0-17.7-14.3-32-32-32s-32 14.3-32 32l0 242.7-73.4-73.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l128 128c12.5 12.5 32.8 12.5 45.3 0l128-128c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L288 274.7 288 32zM64 352c-35.3 0-64 28.7-64 64l0 32c0 35.3 28.7 64 64 64l384 0c35.3 0 64-28.7 64-64l0-32c0-35.3-28.7-64-64-64l-101.5 0-45.3 45.3c-25 25-65.5 25-90.5 0L165.5 352 64 352zm368 56a24 24 0 1 1 0 48 24 24 0 1 1 0-48z"/></svg>
   `;
   
   panel.appendChild(panelContent);
