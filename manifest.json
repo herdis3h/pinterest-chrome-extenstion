@@ -1,10 +1,11 @@
 {
-  "name": "Page Redder",
+  "name": "PinSaver",
   "action": {},
   "manifest_version": 3,
-  "version": "0.1",
-  "description": "Turns the page red when you click the icon",
-  "permissions": ["activeTab", "storage", "scripting", "downloads", "downloads.open"],
+  "version": "1.0",
+  "version_name": "1.0 beta",
+  "description": "PinSaver makes it effortless to save images from Pinterest boards.",
+  "permissions": ["activeTab", "scripting"],
   "background": {
     "service_worker": "service-worker.js"
   },
